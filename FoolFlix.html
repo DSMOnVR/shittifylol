@@ -17,7 +17,7 @@
     button, input, select { font: inherit; }
     .topbar {
       position: sticky; top: 0; z-index: 10;
-      display: grid; grid-template-columns: auto 1fr minmax(280px, 520px);
+      display: grid; grid-template-columns: auto 1fr minmax(300px, 460px);
       align-items: center; gap: 22px; padding: 18px 34px;
       background: #050505; border-bottom: 1px solid #1e1e1e;
     }
@@ -32,7 +32,7 @@
       text-decoration: none; white-space: nowrap;
     }
     .nav-button.is-active, .search button, .hero-actions button.primary, .load-more { background: #e50914; }
-    .search { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; }
+    .search { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; }
     .search input, .search select {
       min-width: 0; border: 1px solid #333333; border-radius: 6px;
       padding: 10px 12px; background: #111111; color: #ffffff;
@@ -82,8 +82,8 @@
       border-radius: 8px; padding: 0; background: #101010; color: #ffffff;
     }
     dialog::backdrop { background: rgba(0, 0, 0, 0.72); }
-    dialog[open] { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; }
-    #dialog-poster { width: 100%; height: 100%; min-height: 440px; object-fit: cover; background: #181818; }
+    dialog[open] { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; }
+    #dialog-poster { width: 100%; height: 100%; min-height: 440px; object-fit: contain; background: #050505; }
     .dialog-copy { padding: 28px; }
     .dialog-copy h2 { margin: 0 0 12px; font-size: 2rem; line-height: 1.05; }
     .dialog-copy p { color: #d6d6d6; }
@@ -92,13 +92,49 @@
       border: 0; border-radius: 6px; padding: 11px 16px;
       background: #e50914; color: #ffffff; cursor: pointer; font: inherit; font-weight: 800;
     }
-    #dialog-stream { display: block; overflow-wrap: anywhere; color: #a3a3a3; font-size: 0.85rem; }
+    .episode-panel {
+      display: none; margin-top: 22px; border-top: 1px solid #2b2b2b; padding-top: 18px;
+    }
+    .episode-panel.is-open { display: block; }
+    .episode-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;
+    }
+    .episode-head h3 { margin: 0; font-size: 1rem; }
+    .season-field {
+      display: grid; gap: 4px; min-width: 150px;
+    }
+    .season-field span {
+      color: #a8a8a8; font-size: 0.72rem; font-weight: 800; text-transform: uppercase;
+    }
+    .episode-head select {
+      border: 1px solid #454545; border-radius: 6px; padding: 9px 10px;
+      background: #0d0d0d; color: #ffffff; width: 100%;
+    }
+    .episode-list {
+      display: grid; gap: 10px; max-height: 340px; overflow: auto; padding-right: 4px;
+    }
+    .episode-card {
+      display: grid; grid-template-columns: 124px 1fr; gap: 12px; width: 100%;
+      border: 1px solid #262626; border-radius: 7px; padding: 8px; background: #151515;
+      color: #ffffff; text-align: left; cursor: pointer;
+    }
+    .episode-card.is-active { border-color: #e50914; background: #1f1112; }
+    .episode-cover {
+      width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 5px; background: #222222;
+    }
+    .episode-name { margin: 0 0 5px; font-weight: 800; line-height: 1.25; }
+    .episode-overview {
+      margin: 0; color: #c8c8c8; font-size: 0.86rem; line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .episode-status { margin: 0; color: #9a9a9a; font-size: 0.88rem; }
     #close-details { position: absolute; top: 10px; right: 10px; z-index: 2; }
     @media (max-width: 780px) {
       .topbar { grid-template-columns: 1fr; padding: 14px; }
       .hero, .rail-section { padding-left: 16px; padding-right: 16px; }
       dialog[open] { grid-template-columns: 1fr; }
       #dialog-poster { height: 360px; min-height: 0; }
+      .episode-card { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -113,12 +149,7 @@
     </nav>
     <form class="search" id="search-form">
       <select id="server-select" aria-label="server"><option value="">auto server</option></select>
-      <select id="search-type" aria-label="search type">
-        <option value="all">movies + shows</option>
-        <option value="movie">movies</option>
-        <option value="tv">shows</option>
-      </select>
-      <input id="search-input" name="q" type="search" placeholder="search titles or TMDB ids" autocomplete="off">
+      <input id="search-input" name="q" type="search" placeholder="search titles" autocomplete="off">
       <button type="submit">search</button>
     </form>
   </header>
@@ -152,7 +183,17 @@
       <h2 id="dialog-title"></h2>
       <p id="dialog-overview"></p>
       <div class="dialog-actions"><button class="primary" id="dialog-stream-button">play</button></div>
-      <code id="dialog-stream"></code>
+      <section class="episode-panel" id="episode-panel">
+        <div class="episode-head">
+          <h3>Episodes</h3>
+          <label class="season-field">
+            <span>Season</span>
+            <select id="season-select" aria-label="season"></select>
+          </label>
+        </div>
+        <p class="episode-status" id="episode-status"></p>
+        <div class="episode-list" id="episode-list"></div>
+      </section>
     </div>
   </dialog>
   <section class="player-overlay" id="player-overlay" aria-hidden="true">
@@ -163,7 +204,9 @@
     <iframe class="player-frame" id="player-frame" title="FoolFlix player" src="about:blank" allow="fullscreen; autoplay; encrypted-media; picture-in-picture"></iframe>
   </section>
   <script>
-    const apiBase = "https://sfools-stuff-342b8fbbb030.herokuapp.com";
+    const herokuApiBase = "https://sfools-stuff-342b8fbbb030.herokuapp.com";
+    const isLocalPage = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+    const apiBase = isLocalPage ? location.origin : herokuApiBase;
     const imageBase = "https://image.tmdb.org/t/p";
     const grid = document.querySelector("#movie-grid");
     const statusText = document.querySelector("#status");
@@ -176,7 +219,6 @@
     const heroStream = document.querySelector("#hero-stream");
     const searchForm = document.querySelector("#search-form");
     const searchInput = document.querySelector("#search-input");
-    const searchType = document.querySelector("#search-type");
     const serverSelect = document.querySelector("#server-select");
     const dialog = document.querySelector("#details-dialog");
     const closeDetails = document.querySelector("#close-details");
@@ -185,6 +227,10 @@
     const dialogTitle = document.querySelector("#dialog-title");
     const dialogOverview = document.querySelector("#dialog-overview");
     const dialogStreamButton = document.querySelector("#dialog-stream-button");
+    const episodePanel = document.querySelector("#episode-panel");
+    const seasonSelect = document.querySelector("#season-select");
+    const episodeStatus = document.querySelector("#episode-status");
+    const episodeList = document.querySelector("#episode-list");
     const navButtons = Array.from(document.querySelectorAll(".nav-button"));
     const loadMore = document.querySelector("#load-more");
     const sentinel = document.querySelector("#scroll-sentinel");
@@ -204,29 +250,10 @@
 
     function titleFor(item) { return item.title || item.name || "untitled"; }
     function dateFor(item) { return item.release_date || item.first_air_date || ""; }
-    function prettyType(type) { return type === "tv" ? "show" : "movie"; }
-    function posterPlaceholder(item) {
-      const label = encodeURIComponent(`${prettyType(typeFor(item))} id ${item.id}`);
-      return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 500 750'%3E%3Crect width='500' height='750' fill='%23181818'/%3E%3Ctext x='250' y='360' fill='%23f5f5f5' font-family='Arial,sans-serif' font-size='38' font-weight='700' text-anchor='middle'%3E${label}%3C/text%3E%3Ctext x='250' y='410' fill='%23a3a3a3' font-family='Arial,sans-serif' font-size='28' text-anchor='middle'%3ETMDB%3C/text%3E%3C/svg%3E`;
-    }
-    function posterFor(item, size = "w500") { return item.poster_path ? `${imageBase}/${size}${item.poster_path}` : posterPlaceholder(item); }
+    function posterFor(item, size = "w500") { return item.poster_path ? `${imageBase}/${size}${item.poster_path}` : ""; }
     function backdropFor(item) { return item.backdrop_path ? `${imageBase}/original${item.backdrop_path}` : ""; }
     function typeFor(item) { return item.media_type || item._type || (item.first_air_date ? "tv" : "movie"); }
     function ratingFor(item) { return Number.isFinite(item.vote_average) ? item.vote_average.toFixed(1) : "n/a"; }
-    function selectedSearchTypes() { return currentType === "all" ? ["movie", "tv"] : [currentType]; }
-    function isIdSearch(query) { return /^\d+$/.test(query); }
-    function itemForId(query, type) {
-      const name = `${prettyType(type).replace(/^./, (letter) => letter.toUpperCase())} ID ${query}`;
-      return {
-        id: query,
-        title: type === "movie" ? name : undefined,
-        name: type === "tv" ? name : undefined,
-        overview: `Ready to play ${prettyType(type)} TMDB id ${query}.`,
-        vote_average: null,
-        _type: type,
-        _fromIdSearch: true
-      };
-    }
     function setStatus(message) { statusText.textContent = message; }
     async function getJson(path) {
       const response = await fetch(`${apiBase}${path}`);
@@ -257,6 +284,9 @@
         params.set("e", item._episode || "1");
       }
       return `${apiBase}/player?${params.toString()}`;
+    }
+    function updateDialogStream(item) {
+      dialogStreamButton.onclick = () => openStream(item);
     }
     async function openStream(item) {
       const url = playerUrl(item);
@@ -301,32 +331,108 @@
       dialogMeta.textContent = `${typeFor(item)} | ${dateFor(item).slice(0, 4) || "unknown"} | ${ratingFor(item)}`;
       dialogTitle.textContent = titleFor(item);
       dialogOverview.textContent = item.overview || "no overview available yet.";
-      dialogStreamButton.onclick = () => openStream(item);
+      item._season = item._season || 1;
+      item._episode = item._episode || 1;
+      updateDialogStream(item);
+      if (typeFor(item) === "tv") {
+        setupEpisodes(item).catch((error) => {
+          episodePanel.classList.add("is-open");
+          episodeStatus.textContent = `episodes failed: ${error.message}`;
+          episodeList.replaceChildren();
+        });
+      } else {
+        episodePanel.classList.remove("is-open");
+        seasonSelect.replaceChildren();
+        episodeList.replaceChildren();
+        episodeStatus.textContent = "";
+      }
       dialog.showModal();
     }
-    async function getSearchPage(page) {
-      if (isIdSearch(currentQuery)) {
-        return {
-          results: selectedSearchTypes().map((type) => itemForId(currentQuery, type)),
-          total_pages: 1
-        };
+    async function setupEpisodes(item) {
+      episodePanel.classList.add("is-open");
+      episodeStatus.textContent = "loading episodes";
+      episodeList.replaceChildren();
+      const info = await getJson(`/api/movies/info?tmdbId=${item.id}&type=tv`);
+      const seasons = (info.seasons || [])
+        .filter((season) => Number(season.season_number) > 0)
+        .map((season) => ({
+          number: season.season_number,
+          name: season.name || `Season ${season.season_number}`
+        }));
+      seasonSelect.replaceChildren();
+      for (const season of seasons.length ? seasons : [{ number: 1, name: "Season 1" }]) {
+        const option = document.createElement("option");
+        option.value = season.number;
+        option.textContent = season.name;
+        seasonSelect.append(option);
       }
-      const pages = await Promise.all(selectedSearchTypes().map(async (type) => {
-        const data = await getJson(`/api/movies/search?q=${encodeURIComponent(currentQuery)}&type=${type}&page=${page}`);
-        return {
-          total_pages: data.total_pages || page,
-          results: (data.results || []).map((item) => ({ ...item, _type: item.media_type || item._type || type }))
-        };
-      }));
-      return {
-        results: pages.flatMap((data) => data.results),
-        total_pages: Math.max(...pages.map((data) => data.total_pages), page)
-      };
+      seasonSelect.value = String(item._season || seasons[0]?.number || 1);
+      seasonSelect.onchange = () => loadSeasonEpisodes(item, Number(seasonSelect.value)).catch((error) => {
+        episodeStatus.textContent = `episodes failed: ${error.message}`;
+      });
+      await loadSeasonEpisodes(item, Number(seasonSelect.value || 1));
+    }
+    async function loadSeasonEpisodes(item, seasonNumber) {
+      episodeStatus.textContent = "loading episodes";
+      episodeList.replaceChildren();
+      const data = await getJson(`/api/movies/season?tmdbId=${item.id}&s=${seasonNumber}`);
+      const episodes = data.episodes || [];
+      if (!episodes.length) {
+        episodeStatus.textContent = "no episodes found";
+        return;
+      }
+      episodeStatus.textContent = `${episodes.length} episodes`;
+      for (const episode of episodes) {
+        const card = document.createElement("button");
+        const cover = document.createElement("img");
+        const copy = document.createElement("div");
+        const name = document.createElement("p");
+        const overview = document.createElement("p");
+        card.className = "episode-card";
+        if (Number(item._season) === seasonNumber && Number(item._episode) === Number(episode.episode_number)) {
+          card.classList.add("is-active");
+        }
+        cover.className = "episode-cover";
+        cover.src = episode.still_path ? `${imageBase}/w300${episode.still_path}` : backdropFor(item) || posterFor(item, "w342");
+        cover.alt = episode.name || `Episode ${episode.episode_number}`;
+        name.className = "episode-name";
+        overview.className = "episode-overview";
+        name.textContent = `${episode.episode_number}. ${episode.name || `Episode ${episode.episode_number}`}`;
+        overview.textContent = episode.overview || "no episode description available yet.";
+        copy.append(name, overview);
+        card.append(cover, copy);
+        card.addEventListener("click", () => {
+          item._season = seasonNumber;
+          item._episode = episode.episode_number;
+          episodeList.querySelectorAll(".episode-card").forEach((node) => node.classList.remove("is-active"));
+          card.classList.add("is-active");
+          updateDialogStream(item);
+        });
+        episodeList.append(card);
+      }
     }
     function endpointForPage(page) {
       if (currentFeed === "trending") return `/api/movies/trending?type=${currentType}&page=${page}`;
       if (currentFeed === "top-rated") return `/api/movies/top-rated?type=${currentType}&page=${page}`;
       return `/api/movies/discover?type=${currentType}&page=${page}`;
+    }
+    async function searchPage(page) {
+      const query = encodeURIComponent(currentQuery);
+      const [movies, shows] = await Promise.all([
+        getJson(`/api/movies/search?q=${query}&type=movie&page=${page}`),
+        getJson(`/api/movies/search?q=${query}&type=tv&page=${page}`)
+      ]);
+      const movieResults = (movies.results || []).map((item) => ({ ...item, _type: "movie" }));
+      const showResults = (shows.results || []).map((item) => ({ ...item, _type: "tv" }));
+      const results = [...movieResults, ...showResults].sort((a, b) => {
+        const scoreA = Number(a.popularity || 0) + Number(a.vote_count || 0) / 1000;
+        const scoreB = Number(b.popularity || 0) + Number(b.vote_count || 0) / 1000;
+        return scoreB - scoreA;
+      });
+      return {
+        results,
+        total_pages: Math.max(movies.total_pages || page, shows.total_pages || page)
+      };
     }
     async function loadNextPage(reset = false) {
       if (loading) return;
@@ -344,10 +450,10 @@
         grid.replaceChildren();
       }
       const nextPage = currentPage + 1;
-      const data = currentMode === "search" ? await getSearchPage(nextPage) : await getJson(endpointForPage(nextPage));
-      const incoming = (data.results || []).map((item) => ({ ...item, _type: item.media_type || item._type || currentType })).filter((item) => {
+      const data = currentMode === "search" ? await searchPage(nextPage) : await getJson(endpointForPage(nextPage));
+      const incoming = (data.results || []).map((item) => ({ ...item, _type: item._type || currentType })).filter((item) => {
         const mediaType = typeFor(item);
-        return (mediaType === "movie" || mediaType === "tv") && (item.poster_path || item._fromIdSearch);
+        return (mediaType === "movie" || mediaType === "tv") && item.poster_path;
       });
       totalPages = Math.min(data.total_pages || nextPage, 500);
       currentPage = nextPage;
@@ -374,7 +480,6 @@
       currentLabel = button.dataset.label;
       currentQuery = "";
       searchInput.value = "";
-      searchType.value = "all";
       loadNextPage(true).catch((error) => failLoad("feed", error));
     }
     searchForm.addEventListener("submit", (event) => {
@@ -383,9 +488,9 @@
       if (!query) return;
       navButtons.forEach((item) => item.classList.remove("is-active"));
       currentMode = "search";
-      currentType = searchType.value;
+      currentType = "multi";
       currentQuery = query;
-      currentLabel = `${isIdSearch(query) ? "id" : "search"} ${searchType.options[searchType.selectedIndex].textContent}: ${query}`;
+      currentLabel = `search: ${query}`;
       loadNextPage(true).catch((error) => failLoad("search", error));
     });
     for (const button of navButtons) button.addEventListener("click", () => setFeed(button));
