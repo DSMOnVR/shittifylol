@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SFoolsCloud</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: #101010;
+      color: #f1f1f1;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 18px 24px;
+      background: #141414;
+      border-bottom: 1px solid #2f2f2f;
+    }
+
+    .brand {
+      font-weight: 700;
+      font-size: 26px;
+      letter-spacing: 0;
+    }
+
+    .tools {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      justify-content: end;
+    }
+
+    input {
+      height: 42px;
+      border: 1px solid #333;
+      background: #101010;
+      color: #f1f1f1;
+      border-radius: 4px;
+      padding: 0 12px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #777;
+    }
+
+    #apiKey {
+      width: 300px;
+    }
+
+    #search {
+      width: 260px;
+    }
+
+    button {
+      height: 42px;
+      border: 1px solid #e50914;
+      background: #e50914;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-weight: 700;
+      transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+    }
+
+    button:hover:not(:disabled) {
+      background: #f6121d;
+      border-color: #f6121d;
+    }
+
+    button:active:not(:disabled) {
+      transform: translateY(1px);
+    }
+
+    button.secondary {
+      background: #242424;
+      border-color: #3a3a3a;
+      color: #f1f1f1;
+    }
+
+    button.secondary:hover:not(:disabled) {
+      background: #303030;
+      border-color: #505050;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .wrap {
+      padding: 22px;
+    }
+
+    .status {
+      min-height: 22px;
+      margin-bottom: 18px;
+      color: #b5b5b5;
+      font-size: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 22px;
+    }
+
+    .card {
+      overflow: hidden;
+      border: 1px solid #2c2c2c;
+      border-radius: 6px;
+      background: #181818;
+      box-shadow: 0 10px 22px rgba(0, 0, 0, 0.22);
+      cursor: pointer;
+      outline: none;
+      transition: border-color 140ms ease, transform 140ms ease, background 140ms ease;
+    }
+
+    .card:hover,
+    .card:focus-visible {
+      border-color: #777;
+      background: #202020;
+      transform: translateY(-2px);
+    }
+
+    .art {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      background: #0b0b0b;
+    }
+
+    .info {
+      padding: 12px;
+    }
+
+    .title {
+      min-height: 46px;
+      margin: 0 0 8px;
+      font-weight: 700;
+      line-height: 1.25;
+      font-size: 17px;
+    }
+
+    .tags {
+      min-height: 20px;
+      color: #adadad;
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hint {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid #2d2d2d;
+      color: #e50914;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .player {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      background: #000;
+    }
+
+    .playing .player {
+      display: block;
+    }
+
+    .playing .topbar,
+    .playing .wrap {
+      display: none;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #000;
+    }
+
+    .playerBar {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      display: flex;
+      gap: 8px;
+      z-index: 2;
+    }
+
+    .timer {
+      min-width: 72px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 4px;
+      background: rgba(20, 20, 20, 0.86);
+      color: #fff;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .playerBar button {
+      background: rgba(20, 20, 20, 0.86);
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    @media (max-width: 760px) {
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .tools {
+        justify-content: stretch;
+      }
+
+      #apiKey,
+      #search {
+        width: 100%;
+      }
+
+      .tools button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">SFoolsCloud</div>
+    <div class="tools">
+      <input id="search" placeholder="Search games" autocomplete="off">
+      <input id="apiKey" type="password" placeholder="API key" autocomplete="off">
+      <button id="saveKey" type="button" class="secondary">Save key</button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div id="status" class="status">Loading games...</div>
+    <section id="grid" class="grid" aria-live="polite"></section>
+  </main>
+
+  <section id="player" class="player">
+    <div class="playerBar">
+      <div id="timer" class="timer">20:00</div>
+      <button id="fullscreenBtn" type="button">Fullscreen</button>
+      <button id="quitBtn" type="button">Quit</button>
+    </div>
+    <iframe id="frame" title="Cloud game" allow="autoplay; fullscreen; gamepad; microphone; camera" allowfullscreen></iframe>
+  </section>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const apiOrigin = "https://sfools-stuff-342b8fbbb030.herokuapp.com";
+    const grid = $("grid");
+    const statusEl = $("status");
+    const apiKeyInput = $("apiKey");
+    const searchInput = $("search");
+    const saveKeyBtn = $("saveKey");
+    const frame = $("frame");
+    const quitBtn = $("quitBtn");
+    const fullscreenBtn = $("fullscreenBtn");
+    const timerEl = $("timer");
+
+    let games = [];
+    let activeUuid = "";
+    let activeAborter = null;
+    let pingTimer = 0;
+    let countdownTimer = 0;
+    let sessionStartedAt = 0;
+    let sessionLimitSeconds = 20 * 60;
+
+    apiKeyInput.value = localStorage.getItem("cloud_api_key") || "";
+
+    function endpoint(path) {
+      return new URL(path, apiOrigin.replace(/\/+$/, "") + "/").toString();
+    }
+
+    function setStatus(text) {
+      statusEl.textContent = text;
+    }
+
+    function saveKey() {
+      localStorage.setItem("cloud_api_key", apiKeyInput.value.trim());
+      setStatus("API key saved.");
+    }
+
+    function formatSeconds(seconds) {
+      const safe = Math.max(0, Math.ceil(seconds));
+      const minutes = Math.floor(safe / 60);
+      const rest = safe % 60;
+      return String(minutes).padStart(2, "0") + ":" + String(rest).padStart(2, "0");
+    }
+
+    function updateTimer(usedSeconds) {
+      const remaining = sessionLimitSeconds - usedSeconds;
+      timerEl.textContent = formatSeconds(remaining);
+    }
+
+    function beginCountdown(maxSeconds) {
+      clearInterval(countdownTimer);
+      sessionLimitSeconds = Number.isFinite(maxSeconds) && maxSeconds > 0 ? maxSeconds : 20 * 60;
+      sessionStartedAt = Date.now();
+      updateTimer(0);
+      countdownTimer = setInterval(() => {
+        const used = Math.floor((Date.now() - sessionStartedAt) / 1000);
+        updateTimer(used);
+        if (used >= sessionLimitSeconds) clearInterval(countdownTimer);
+      }, 1000);
+    }
+
+    function imageUrl(path) {
+      return new URL(path, apiOrigin).toString();
+    }
+
+    async function apiFetch(path, options = {}) {
+      const headers = {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      };
+      const apiKey = apiKeyInput.value.trim();
+      if (apiKey) headers["x-api-key"] = apiKey;
+
+      const res = await fetch(endpoint(path), {
+        ...options,
+        headers,
+        signal: options.signal || activeAborter?.signal
+      });
+
+      if (!res.ok) {
+        let detail = "";
+        try {
+          const body = await res.json();
+          detail = body.error ? ": " + body.error : ": " + JSON.stringify(body);
+        } catch {
+          detail = ": " + await res.text();
+        }
+        throw new Error((options.method || "GET") + " " + path + " failed (" + res.status + ")" + detail);
+      }
+
+      return res;
+    }
+
+    function renderGames() {
+      const query = searchInput.value.trim().toLowerCase();
+      const filtered = games.filter((game) => {
+        const haystack = [
+          game.name,
+          game.game_key,
+          ...(game.tags || [])
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+
+      grid.textContent = "";
+      for (const game of filtered) {
+        const card = document.createElement("article");
+        card.className = "card";
+        card.tabIndex = 0;
+        card.setAttribute("role", "button");
+        card.setAttribute("aria-label", "Play " + game.name);
+
+        const img = document.createElement("img");
+        img.className = "art";
+        img.alt = "";
+        img.loading = "lazy";
+        img.src = imageUrl(game.cover || game.image);
+
+        const info = document.createElement("div");
+        info.className = "info";
+
+        const title = document.createElement("p");
+        title.className = "title";
+        title.textContent = game.name;
+
+        const tags = document.createElement("div");
+        tags.className = "tags";
+        tags.textContent = (game.tags || []).join(", ") || game.game_key;
+
+        card.addEventListener("click", () => playGame(game, card));
+        card.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          playGame(game, card);
+        });
+
+        info.append(title, tags);
+        card.append(img, info);
+        grid.append(card);
+      }
+
+      setStatus(filtered.length + " game" + (filtered.length === 1 ? "" : "s"));
+    }
+
+    async function loadGames() {
+      const res = await fetch(endpoint("/cloud/v1/games"));
+      if (!res.ok) throw new Error("Could not load games.");
+      const data = await res.json();
+      games = Array.isArray(data.games) ? data.games : [];
+      renderGames();
+    }
+
+    async function readNdjson(res, onEvent) {
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        let chunk;
+        try {
+          chunk = await reader.read();
+        } catch (err) {
+          throw err;
+        }
+
+        const { value, done } = chunk;
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          if (line.trim()) onEvent(JSON.parse(line));
+        }
+
+        if (done) break;
+      }
+
+      if (buffer.trim()) onEvent(JSON.parse(buffer));
+    }
+
+    async function createSession(gameKey) {
+      let latestUuid = "";
+      let finished = false;
+
+      setStatus("Creating session...");
+      const res = await apiFetch("/cloud/v1/createSession", {
+        method: "POST",
+        body: JSON.stringify({ game_key: gameKey })
+      });
+
+      try {
+        await readNdjson(res, (event) => {
+          if (event.uuid) latestUuid = event.uuid;
+          if (event.status === "queue") {
+            setStatus(event.queue_pos != null ? "Queue position " + event.queue_pos : "Waiting in queue...");
+          }
+          if (event.status === "finished_queue") {
+            finished = true;
+            setStatus("Queue ready. Starting game...");
+          }
+          if (event.status === "error") throw new Error(event.error || "Session creation failed.");
+        });
+      } catch (err) {
+        if (!latestUuid) throw err;
+        setStatus("Create stream ended early. Polling queue...");
+      }
+
+      if (!latestUuid) throw new Error("Session did not return a uuid.");
+      return { uuid: latestUuid, finished };
+    }
+
+    async function waitForQueue(uuid, alreadyFinished) {
+      if (alreadyFinished) return;
+
+      while (true) {
+        await new Promise((resolve) => setTimeout(resolve, 3200));
+        const res = await apiFetch("/cloud/v1/getQueue?uuid=" + encodeURIComponent(uuid));
+        const data = await res.json();
+        if (data.status === "finished_queue") return;
+        if (data.status === "queue") {
+          setStatus(data.queue_pos != null ? "Queue position " + data.queue_pos : "Waiting in queue...");
+          continue;
+        }
+        throw new Error("Unexpected queue status.");
+      }
+    }
+
+    async function startGame(uuid) {
+      const res = await apiFetch("/cloud/v1/startGame", {
+        method: "POST",
+        body: JSON.stringify({ uuid })
+      });
+      return res.json();
+    }
+
+    function beginPinging(uuid) {
+      clearInterval(pingTimer);
+      pingTimer = setInterval(async () => {
+        try {
+          const res = await apiFetch("/cloud/v1/pingSession", {
+            method: "POST",
+            body: JSON.stringify({ uuid })
+          });
+          const data = await res.json();
+          if (typeof data.session_time_limit_seconds === "number") {
+            sessionLimitSeconds = data.session_time_limit_seconds;
+          }
+          if (typeof data.session_time_used_seconds === "number") {
+            updateTimer(data.session_time_used_seconds);
+          }
+        } catch {
+          clearInterval(pingTimer);
+        }
+      }, 10000);
+    }
+
+    function playerDocument(config) {
+      const payload = JSON.stringify({
+        ice_servers: config.ice_servers || [],
+        signaling_ws: config.signaling_ws
+      });
+
+      return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      color: #eee;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      outline: none;
+    }
+
+    #status,
+    #audio {
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 4px;
+      background: rgba(15, 15, 15, 0.84);
+      font-size: 12px;
+    }
+
+    #audio {
+      display: none;
+    }
+
+    #audio.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <video id="video" autoplay playsinline muted disablepictureinpicture disableremoteplayback tabindex="0"></video>
+  <div id="status">Connecting...</div>
+  <div id="audio">Click to enable audio</div>
+  <script>
+    const config = ${payload.replace(/</g, "\\u003c")};
+    const video = document.getElementById("video");
+    const status = document.getElementById("status");
+    const audio = document.getElementById("audio");
+    let pc;
+    let ws;
+    let dc;
+    let offered = false;
+    let audioUnlocked = false;
+    let focused = false;
+    let pointerLocked = false;
+    let curX = 0;
+    let curY = 0;
+    let vMouseX = 0;
+    let vMouseY = 0;
+    let mouseButtons = 0;
+    const activeKeys = new Set();
+
+    function setStatus(text) {
+      status.textContent = text;
+    }
+
+    function send(message) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(message));
+    }
+
+    async function makeOffer() {
+      if (offered) return;
+      offered = true;
+      pc = new RTCPeerConnection({ iceServers: config.ice_servers });
+      pc.addTransceiver("audio", { direction: "recvonly" });
+      pc.addTransceiver("video", { direction: "recvonly" });
+
+      const channel = pc.createDataChannel("JYSDK", { id: 1, ordered: false, maxRetransmits: 0 });
+      channel.onopen = () => {
+        dc = channel;
+        setupCursorHandling(channel);
+      };
+      pc.ondatachannel = (event) => {
+        if (event.channel.label === "JYSDK") dc = event.channel;
+      };
+      pc.ontrack = (event) => {
+        if (!video.srcObject) video.srcObject = new MediaStream();
+        video.srcObject.addTrack(event.track);
+        video.play().catch(() => {});
+      };
+      pc.onicecandidate = (event) => {
+        if (event.candidate) send({ type: "rtc_candidate", candidate: event.candidate.toJSON() });
+      };
+      pc.oniceconnectionstatechange = () => {
+        const state = pc.iceConnectionState;
+        setStatus("ICE: " + state);
+        if (state === "connected" || state === "completed") {
+          status.style.display = "none";
+          if (!audioUnlocked) audio.classList.add("visible");
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      send({ type: "rtc_offer", sdp: offer.sdp });
+    }
+
+    function setupCursorHandling(channel) {
+      const mimeMap = { 0: "image/x-icon", 1: "image/jpeg", 2: "image/png", 3: "image/gif" };
+      let cursorUrl = null;
+      channel.onmessage = (event) => {
+        if (!(event.data instanceof ArrayBuffer)) return;
+        const view = new DataView(event.data);
+        if (view.byteLength <= 4 || view.getUint8(0) !== 163 || view.getUint8(1) !== 6) return;
+        if (view.byteLength <= 32) {
+          video.style.cursor = "none";
+          if (cursorUrl) URL.revokeObjectURL(cursorUrl);
+          cursorUrl = null;
+          return;
+        }
+        const blob = new Blob([event.data.slice(5)], { type: mimeMap[view.getUint8(2)] || "image/png" });
+        if (cursorUrl) URL.revokeObjectURL(cursorUrl);
+        cursorUrl = URL.createObjectURL(blob);
+        video.style.cursor = "url(" + cursorUrl + ") " + view.getUint8(3) + " " + view.getUint8(4) + ", default";
+        if (document.pointerLockElement === video) document.exitPointerLock();
+      };
+    }
+
+    function getVideoRect() {
+      const rect = video.getBoundingClientRect();
+      const vw = video.videoWidth || rect.width;
+      const vh = video.videoHeight || rect.height;
+      const scale = Math.min(rect.width / vw, rect.height / vh);
+      const width = vw * scale;
+      const height = vh * scale;
+      return {
+        left: rect.left + (rect.width - width) / 2,
+        top: rect.top + (rect.height - height) / 2,
+        width,
+        height
+      };
+    }
+
+    function dcSend(buffer) {
+      if (dc && dc.readyState === "open") dc.send(buffer);
+    }
+
+    function sendMouse(moveX = 0, moveY = 0, scroll = 0) {
+      moveX = Math.max(-127, Math.min(127, moveX));
+      moveY = Math.max(-127, Math.min(127, moveY));
+      const rect = getVideoRect();
+      const absX = Math.floor(((curX - rect.left) / rect.width) * 10000);
+      const absY = Math.floor(((curY - rect.top) / rect.height) * 10000);
+      const buffer = new ArrayBuffer(12);
+      const view = new DataView(buffer);
+      view.setUint8(0, 1);
+      view.setUint8(1, 11);
+      view.setUint8(2, 2);
+      view.setUint8(3, 8);
+      view.setUint16(4, Math.max(0, Math.min(10000, absX)));
+      view.setUint16(6, Math.max(0, Math.min(10000, absY)));
+      view.setInt8(8, moveX);
+      view.setInt8(9, moveY);
+      view.setUint8(10, mouseButtons);
+      view.setInt8(11, scroll);
+      dcSend(buffer);
+    }
+
+    function sendKey(keyCode, isDown) {
+      if (isDown) activeKeys.add(keyCode);
+      else activeKeys.delete(keyCode);
+      const buffer = new ArrayBuffer(24);
+      const view = new DataView(buffer);
+      view.setUint8(0, 1);
+      view.setUint8(2, 1);
+      view.setUint8(3, 1);
+      view.setUint16(4, keyCode);
+      view.setUint8(6, isDown ? 1 : 0);
+      let offset = 7;
+      for (const key of activeKeys) {
+        if (key !== keyCode && key > 0 && key < 255 && offset < 21) {
+          view.setUint16(offset, key);
+          offset += 2;
+          view.setUint8(offset, 1);
+          offset += 1;
+        }
+      }
+      view.setUint8(offset++, 255);
+      view.setUint8(1, offset - 1);
+      dcSend(buffer.slice(0, offset));
+    }
+
+    const gamepadButtonMask = [4096, 8192, 16384, 32768, 256, 512, 0, 0, 32, 16, 64, 128, 1, 2, 4, 8, 0];
+
+    function sendGamepad() {
+      const gamepads = navigator.getGamepads?.() || [];
+      for (let i = 0; i < gamepads.length; i++) {
+        const gp = gamepads[i];
+        if (!gp) continue;
+        let mask = 0;
+        let lt = 0;
+        let rt = 0;
+        for (let b = 0; b < Math.min(gp.buttons.length, 17); b++) {
+          const button = gp.buttons[b];
+          const pressed = typeof button === "object" ? button.pressed : button > 0;
+          const value = typeof button === "object" ? button.value : button;
+          if (!pressed) continue;
+          if (b === 6) lt = Math.round(value * 255);
+          else if (b === 7) rt = Math.round(value * 255);
+          else mask |= gamepadButtonMask[b];
+        }
+        const axes = gp.axes;
+        const buffer = new ArrayBuffer(17);
+        const view = new DataView(buffer);
+        view.setUint8(0, 1);
+        view.setUint8(1, 16);
+        view.setUint8(2, 3);
+        view.setUint8(3, 2);
+        view.setUint8(4, i);
+        view.setUint16(5, mask);
+        view.setUint8(7, lt);
+        view.setUint8(8, rt);
+        view.setInt16(9, axes[0] ? Math.round(32767 * axes[0]) : 0);
+        view.setInt16(11, axes[1] ? Math.round(-32767 * axes[1]) : 0);
+        view.setInt16(13, axes[2] ? Math.round(32767 * axes[2]) : 0);
+        view.setInt16(15, axes[3] ? Math.round(-32767 * axes[3]) : 0);
+        dcSend(buffer);
+      }
+    }
+
+    document.addEventListener("pointerlockchange", () => {
+      pointerLocked = document.pointerLockElement === video;
+      if (pointerLocked) {
+        const rect = getVideoRect();
+        vMouseX = curX - rect.left;
+        vMouseY = curY - rect.top;
+      } else {
+        navigator.keyboard?.unlock?.();
+      }
+    });
+
+    video.addEventListener("click", (event) => {
+      event.preventDefault();
+      if (!dc) return;
+      focused = true;
+      audioUnlocked = true;
+      video.muted = false;
+      video.volume = 1;
+      audio.classList.remove("visible");
+      video.play().catch(() => {});
+      navigator.keyboard?.lock?.().catch(() => {});
+    });
+
+    document.addEventListener("mousemove", (event) => {
+      if (focused && dc) {
+        const moveX = event.movementX || 0;
+        const moveY = event.movementY || 0;
+        if (pointerLocked) {
+          const rect = getVideoRect();
+          vMouseX = Math.max(0, Math.min(rect.width, vMouseX + moveX));
+          vMouseY = Math.max(0, Math.min(rect.height, vMouseY + moveY));
+          curX = rect.left + vMouseX;
+          curY = rect.top + vMouseY;
+        } else {
+          curX = event.clientX;
+          curY = event.clientY;
+        }
+        sendMouse(moveX, moveY, 0);
+      } else {
+        curX = event.clientX;
+        curY = event.clientY;
+      }
+    });
+
+    document.addEventListener("mousedown", (event) => {
+      if (!focused || !dc) return;
+      if (video.style.cursor === "none" && !pointerLocked) video.requestPointerLock().catch(() => {});
+      mouseButtons = event.buttons;
+      sendMouse(0, 0, 0);
+    });
+
+    document.addEventListener("mouseup", (event) => {
+      if (!focused || !dc) return;
+      mouseButtons = event.buttons;
+      sendMouse(0, 0, 0);
+    });
+
+    document.addEventListener("contextmenu", (event) => {
+      if (focused) event.preventDefault();
+    });
+
+    video.addEventListener("wheel", (event) => {
+      if (!focused) return;
+      event.preventDefault();
+      sendMouse(0, 0, event.deltaY > 0 ? -1 : 1);
+    }, { passive: false });
+
+    document.addEventListener("keydown", (event) => {
+      if (!focused || !dc) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) sendKey(event.keyCode, true);
+    }, { capture: true });
+
+    document.addEventListener("keyup", (event) => {
+      if (!focused || !dc) return;
+      event.preventDefault();
+      event.stopPropagation();
+      sendKey(event.keyCode, false);
+    }, { capture: true });
+
+    function inputLoop() {
+      if (dc && dc.readyState === "open") sendGamepad();
+      requestAnimationFrame(inputLoop);
+    }
+
+    function connect() {
+      ws = new WebSocket(config.signaling_ws);
+      ws.addEventListener("open", () => {
+        setStatus("Waiting for game...");
+        setTimeout(() => makeOffer().catch((err) => setStatus(err.message)), 5000);
+      });
+      ws.addEventListener("message", async (event) => {
+        let message;
+        try {
+          message = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        try {
+          if (message.type === "game_ready") {
+            await makeOffer();
+          } else if (message.type === "rtc_answer" && message.sdp) {
+            if (!pc) await makeOffer();
+            await pc.setRemoteDescription(new RTCSessionDescription(message.sdp));
+          } else if (message.type === "rtc_candidate" && message.candidate && pc) {
+            const candidate = typeof message.candidate === "string"
+              ? { candidate: message.candidate }
+              : message.candidate;
+            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          }
+        } catch (err) {
+          setStatus(err.message);
+        }
+      });
+      ws.addEventListener("close", () => setStatus("Session ended."));
+      ws.addEventListener("error", () => setStatus("Connection error."));
+    }
+
+    requestAnimationFrame(inputLoop);
+    connect();
+  <\/script>
+</body>
+</html>`;
+    }
+
+    async function playGame(game, card) {
+      if (!apiKeyInput.value.trim()) {
+        const message = "you need a api key to play a game! get it from amir (if trusted) or you can buy it.";
+        alert(message);
+        setStatus(message);
+        apiKeyInput.focus();
+        return;
+      }
+
+      saveKey();
+      activeAborter?.abort();
+      activeAborter = new AbortController();
+      card.setAttribute("aria-disabled", "true");
+      card.style.pointerEvents = "none";
+
+      try {
+        setStatus("Starting " + game.name + "...");
+        const session = await createSession(game.game_key);
+        await waitForQueue(session.uuid, session.finished);
+        const gameData = await startGame(session.uuid);
+        activeUuid = session.uuid;
+        frame.srcdoc = playerDocument(gameData);
+        document.body.classList.add("playing");
+        beginCountdown(gameData.max_seconds);
+        beginPinging(session.uuid);
+      } catch (err) {
+        setStatus(err.message);
+      } finally {
+        card.removeAttribute("aria-disabled");
+        card.style.pointerEvents = "";
+      }
+    }
+
+    async function quitSession() {
+      const uuid = activeUuid;
+      activeUuid = "";
+      clearInterval(pingTimer);
+      clearInterval(countdownTimer);
+      frame.removeAttribute("srcdoc");
+      document.body.classList.remove("playing");
+      timerEl.textContent = "20:00";
+      if (!uuid) return;
+
+      try {
+        await apiFetch("/cloud/v1/quitSession", {
+          method: "POST",
+          body: JSON.stringify({ uuid })
+        });
+      } catch {}
+      setStatus("Session ended.");
+    }
+
+    saveKeyBtn.addEventListener("click", saveKey);
+    searchInput.addEventListener("input", renderGames);
+    quitBtn.addEventListener("click", quitSession);
+    fullscreenBtn.addEventListener("click", async () => {
+      if (!document.fullscreenElement) await frame.requestFullscreen();
+      else await document.exitFullscreen();
+    });
+
+    window.addEventListener("beforeunload", () => {
+      clearInterval(pingTimer);
+      clearInterval(countdownTimer);
+      if (!activeUuid) return;
+      navigator.sendBeacon(
+        endpoint("/cloud/v1/quitSession"),
+        new Blob([JSON.stringify({
+          uuid: activeUuid,
+          api_key: apiKeyInput.value.trim()
+        })], { type: "application/json" })
+      );
+    });
+
+    loadGames().catch((err) => setStatus(err.message));
+  </script>
+</body>
+</html>
