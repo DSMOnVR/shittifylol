@@ -1,0 +1,1693 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>buh proxy</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", sans-serif;
+        overflow: hidden;
+        background: black;
+        color: white;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font: inherit;
+      }
+
+      #browser {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+      }
+
+      #tab-bar {
+        display: flex;
+        align-items: center;
+        background: #111;
+        border-bottom: 1px solid #2a2a2a;
+        overflow-x: auto;
+        overflow-y: hidden;
+        min-height: 36px;
+        max-height: 36px;
+        scrollbar-width: none;
+      }
+
+      #tab-bar::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px 0 12px;
+        height: 36px;
+        min-width: 100px;
+        max-width: 180px;
+        background: #1c1c1c;
+        border-right: 1px solid #2a2a2a;
+        cursor: pointer;
+        font-size: 12px;
+        color: #aaa;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        flex-shrink: 0;
+        position: relative;
+        user-select: none;
+      }
+
+      .tab.active {
+        background: #1a191b;
+        color: white;
+        border-top: 2px solid rgb(212, 44, 44);
+      }
+
+      .tab-title {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .tab-close {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 11px;
+        color: #888;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          color 0.15s;
+      }
+
+      .tab-close:hover {
+        background: #444;
+        color: white;
+      }
+
+      #new-tab-btn {
+        flex-shrink: 0;
+        width: 32px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        color: #888;
+        cursor: pointer;
+        border: none;
+        background: transparent;
+        transition: color 0.15s;
+      }
+
+      #new-tab-btn:hover {
+        color: white;
+      }
+
+      #toolbar {
+        display: flex;
+        align-items: center;
+        background: #1a191b;
+        border-bottom: 1px solid #2a2a2a;
+        padding: 6px 8px;
+        gap: 6px;
+      }
+
+      .toolbar-btn {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition:
+          transform 0.45s ease,
+          background 0.15s,
+          color 0.15s;
+        flex-shrink: 0;
+      }
+
+      .toolbar-btn:hover:not(:disabled) {
+        background: #2a2a2a;
+      }
+
+      .toolbar-btn:disabled {
+        cursor: default;
+        opacity: 0.35;
+      }
+
+      #refresh:hover:not(:disabled) {
+        transform: rotate(360deg);
+      }
+
+      #search {
+        flex: 1;
+        border-radius: 7px;
+        background: #4d4c50;
+        color: white;
+        height: 30px;
+        border: none;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      #search::placeholder {
+        color: #aaa;
+      }
+
+      #search:focus {
+        outline: none;
+        background: #5a595e;
+      }
+
+      #engine,
+      #mode,
+      #settings-toggle {
+        height: 30px;
+        border: none;
+        border-radius: 4px;
+        background: transparent;
+        color: #aaa;
+      }
+
+      #engine,
+      #mode {
+        width: 134px;
+        padding: 0 8px;
+        font-size: 12px;
+        background: #242327;
+      }
+
+      #settings-toggle {
+        width: 34px;
+        cursor: pointer;
+      }
+
+      #settings-toggle:hover {
+        background: #2a2a2a;
+        color: white;
+      }
+
+      #settings {
+        display: none;
+        grid-template-columns: minmax(280px, 1.2fr) minmax(210px, 0.7fr) minmax(250px, 0.9fr);
+        gap: 10px;
+        align-items: stretch;
+        padding: 10px;
+        background: #111;
+        border-bottom: 1px solid #2a2a2a;
+      }
+
+      #settings.open {
+        display: grid;
+      }
+
+      .settings-card {
+        min-width: 0;
+        border: 1px solid #2b2b2d;
+        border-radius: 8px;
+        background: #151416;
+        padding: 10px;
+      }
+
+      .settings-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 20px;
+        margin-bottom: 8px;
+        color: #f0f0f0;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      #server-config {
+        min-width: 0;
+        width: 100%;
+        min-height: 62px;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #151518;
+        color: white;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.35;
+        resize: vertical;
+      }
+
+      #server-config:focus {
+        outline: none;
+        border-color: #6e2b2b;
+        background: #18181b;
+      }
+
+      .settings-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+
+      .settings-actions.data-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .tiny-btn {
+        height: 30px;
+        border: 1px solid #333;
+        border-radius: 6px;
+        background: #171719;
+        color: #ddd;
+        padding: 0 10px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      .tiny-btn:hover {
+        border-color: #555;
+        color: white;
+      }
+
+      .tiny-btn.primary {
+        border-color: #7a2c2c;
+        background: #c82d2d;
+        color: white;
+        font-weight: 700;
+      }
+
+      #content-area {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .tab-content {
+        position: absolute;
+        inset: 0;
+        display: none;
+      }
+
+      .tab-content.active {
+        display: block;
+      }
+
+      .tab-home {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        height: 100%;
+        background: black;
+        color: white;
+      }
+
+      .tab-home h1 {
+        font-size: 40px;
+        margin-bottom: 16px;
+      }
+
+      .tab-home input {
+        padding: 8px 12px;
+        width: 320px;
+        background: #111;
+        border: 1px solid #333;
+        color: white;
+        border-radius: 4px;
+        font-size: 15px;
+      }
+
+      .tab-home input:focus {
+        outline: none;
+        border-color: #666;
+      }
+
+      .home-shortcuts {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .home-shortcut {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid #333;
+        border-radius: 7px;
+        background: #111;
+        color: white;
+        cursor: pointer;
+        font-size: 13px;
+      }
+
+      .home-shortcut:hover {
+        background: #1c1c1c;
+        border-color: #555;
+      }
+
+      .home-shortcut-icon {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        background: rgb(212, 44, 44);
+        position: relative;
+        flex-shrink: 0;
+      }
+
+      .home-shortcut-icon::after {
+        content: "";
+        position: absolute;
+        left: 7px;
+        top: 5px;
+        border-left: 6px solid white;
+        border-top: 4px solid transparent;
+        border-bottom: 4px solid transparent;
+      }
+
+      .proxy-iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        display: block;
+        background: white;
+        scrollbar-color: rgb(212, 44, 44) #111;
+      }
+
+      .loading {
+        display: grid;
+        place-items: center;
+        height: 100%;
+        background: #070707;
+        color: #ddd;
+        text-align: center;
+        padding: 24px;
+      }
+
+      .loading-card {
+        width: min(560px, 100%);
+        border: 1px solid #2e2b2b;
+        border-radius: 8px;
+        background: #111;
+        padding: 18px;
+        box-shadow: 0 20px 70px rgba(0, 0, 0, 0.4);
+      }
+
+      .loading-card h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+      }
+
+      .loading-card p {
+        margin: 0;
+        color: #aaa;
+        line-height: 1.45;
+        font-size: 13px;
+      }
+
+      .status {
+        position: absolute;
+        left: 10px;
+        bottom: 10px;
+        max-width: min(700px, calc(100% - 20px));
+        border: 1px solid rgba(255, 90, 63, 0.35);
+        border-radius: 7px;
+        background: rgba(12, 12, 12, 0.92);
+        color: #ddd;
+        padding: 9px 11px;
+        font-size: 12px;
+        line-height: 1.4;
+        display: none;
+        backdrop-filter: blur(8px);
+      }
+
+      .status.show {
+        display: block;
+      }
+
+      @media (max-width: 760px) {
+        #mode {
+          display: none;
+        }
+
+        #settings {
+          grid-template-columns: 1fr;
+        }
+
+        .settings-actions {
+          display: grid;
+          grid-template-columns: 1fr;
+        }
+
+        .tiny-btn {
+          width: 100%;
+        }
+      }
+      #settings { position:absolute; inset:78px 0 0; z-index:20; background:#171719; padding:24px; overflow:auto; }
+      #settings.open { display:grid; grid-template-columns:210px minmax(0,760px); grid-template-rows:auto 1fr; align-content:start; align-items:start; gap:24px; }
+      .settings-heading { grid-column:1/-1; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #343438; padding-bottom:16px; }
+      .settings-heading h2 { font-size:22px; margin:0; }
+      .settings-nav { display:flex; flex-direction:column; gap:4px; }
+      .settings-nav button { border:0; border-radius:4px; background:transparent; color:#ccc; font:inherit; font-size:13px; padding:12px; text-align:left; cursor:pointer; }
+      .settings-nav button[aria-pressed="true"] { color:#fff; background:#363033; box-shadow:inset 3px 0 #e64b50; }
+      #settings .settings-card { grid-column:2; grid-row:2; border:0; border-radius:0; padding:0; background:transparent; }
+      #settings .settings-card[hidden] { display:none; }
+      #settings .settings-title { text-transform:none; font-size:18px; margin-bottom:20px; }
+      #settings h3 { font-size:14px; margin-top:28px; }
+      #settings p { color:#a9a9b2; font-size:13px; }
+      #settings .tiny-btn { height:auto; min-height:34px; white-space:normal; padding:8px 12px; }
+      #server-config { min-height:110px; }
+      .data-filter { display:flex; gap:12px; margin:16px 0; }
+      #site-filter { min-width:0; flex:1; padding:10px; background:#242427; color:#fff; border:1px solid #45454b; border-radius:4px; }
+      .site-data-row { display:flex; align-items:center; gap:12px; padding:14px 0; border-bottom:1px solid #343438; }
+      .site-data-row .site-details { flex:1; min-width:0; overflow-wrap:anywhere; }
+      .site-data-row strong { display:block; font-size:13px; }
+      .site-data-row small { color:#a9a9b2; font-size:12px; }
+      @media(max-width:700px) {
+        #settings { padding:16px; }
+        #settings.open { grid-template-columns:minmax(0,1fr); grid-template-rows:auto auto auto; gap:16px; }
+        .settings-nav { flex-direction:row; flex-wrap:wrap; }
+        #settings .settings-card { grid-column:1; grid-row:3; }
+        .site-data-row { flex-wrap:wrap; }
+        .site-data-row .tiny-btn { width:auto; }
+      }
+      .browser-list { display:grid; gap:0; margin-top:16px; }
+      .browser-row { display:flex; gap:12px; align-items:center; border-bottom:1px solid #39393e; padding:12px 0; min-width:0; }
+      .browser-row .row-main { flex:1; min-width:0; overflow-wrap:anywhere; }
+      .browser-row small { display:block; color:#a7a7b2; margin-top:4px; }
+      .browser-row button { flex-shrink:0; }
+      #diagnostic-report { width:100%; min-height:150px; font:12px monospace; background:#101012; color:#ddd; border:1px solid #444; margin-top:16px; }
+      .permission-row { display:flex; align-items:center; justify-content:space-between; max-width:400px; margin:16px 0; }
+      :root { color-scheme:dark; --surface:#202020; --line:#383838; --accent:#c84b4b; }
+      body { background:#181818; color:#ddd; font-family:Arial,sans-serif; letter-spacing:0; text-transform:lowercase; }
+      button,select,option { text-transform:lowercase; }
+      input,textarea,pre,code { text-transform:none; }
+      #diagnostic-report,#diagnostic-list,#status { text-transform:lowercase; }
+      input::placeholder,textarea::placeholder { text-transform:lowercase; }
+      #browser { height:100dvh; min-height:0; }
+      #tab-bar { background:#111; border-color:var(--line); min-height:40px; max-height:40px; padding:4px 8px 0; gap:2px; }
+      .tab { border:0; border-radius:2px 2px 0 0; background:transparent; color:#aaa; height:36px; min-width:140px; max-width:220px; padding:0 12px; }
+      .tab.active { background:#282828; border:0; border-top:2px solid var(--accent); box-shadow:none; color:#eee; }
+      .tab-close { border-radius:4px; width:20px; height:20px; }
+      #toolbar { background:#282828; border-color:var(--line); padding:10px 12px; gap:8px; min-height:56px; }
+      .toolbar-btn { width:30px; height:32px; display:grid; place-items:center; }
+      #refresh:hover:not(:disabled) { transform:none; }
+      #search { min-width:0; height:36px; background:#191919; border:1px solid #444; border-radius:2px; padding:0 10px; }
+      #search:focus { background:#191919; outline:1px solid #888; outline-offset:0; }
+      #engine,#mode { background:#252525; border:1px solid #444; color:#ccc; height:36px; width:118px; border-radius:2px; }
+      #settings-toggle { height:36px; color:#bbb; }
+      button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+      .tab-home { background:#181818; padding:32px 24px 100px; overflow:auto; }
+      .tab-home h1 { width:min(460px,100%); text-align:left; font-size:32px; font-weight:700; line-height:1.2; margin:0 0 20px; color:#eee; }
+      .tab-home h1 span { color:#888; font-weight:400; }
+      .tab-home input { width:min(460px,100%); height:40px; padding:0 12px; background:#111; border:1px solid #555; border-radius:2px; font-size:14px; box-shadow:none; }
+      .tab-home input:focus { border-color:#aaa; outline:1px solid #aaa; outline-offset:0; }
+      .home-shortcuts { display:flex; justify-content:flex-start; width:min(460px,100%); gap:22px; margin-top:12px; }
+      .home-shortcut { flex-direction:row; justify-content:flex-start; gap:0; height:32px; padding:0; background:none; border:0; border-radius:0; font-size:13px; color:#aaa; text-decoration:underline; text-underline-offset:3px; }
+      .home-shortcut:hover { background:none; border:0; color:#eee; }
+      .home-shortcut-icon { display:none; }
+      .home-shortcut-icon::after { content:none; }
+      .home-shortcut-icon svg { width:23px; height:23px; }
+      #settings { inset:96px 0 0; background:#1b1b1b; padding:28px; border:0; }
+      #settings.open { grid-template-columns:200px minmax(0,800px); gap:28px 36px; }
+      .settings-heading { border-color:#3b3b3b; padding-bottom:18px; }
+      .settings-nav button { color:#aaa; padding:12px 14px; border-radius:0; }
+      .settings-nav button[aria-pressed="true"] { background:#292929; color:#eee; box-shadow:none; border-left:2px solid var(--accent); }
+      #settings .settings-actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+      #settings .tiny-btn { width:auto; border-color:#555; background:#292929; border-radius:2px; font-size:13px; }
+      #settings .tiny-btn:hover { background:#333; border-color:#888; }
+      #settings .tiny-btn.primary { background:#ddd; border-color:#ddd; color:#111; }
+      #settings input:not([type="checkbox"]),#settings select,#server-config { max-width:100%; min-width:0; border:1px solid #555; background:#111; color:#ddd; border-radius:2px; padding:10px 12px; }
+      #settings input[type="checkbox"] { accent-color:var(--accent); width:18px; height:18px; }
+      #cookie-profile { margin:0 0 18px 12px; }
+      #library-search { flex:1; }
+      .browser-row,.site-data-row { border-color:#383838; }
+      .status { background:#252525; border-color:#666; color:#eee; z-index:30; border-radius:2px; backdrop-filter:none; }
+      .loading-card { box-shadow:none; border-radius:2px; }
+      button,input,select,textarea { transition:none!important; }
+      @media(max-width:700px) {
+        #settings { padding:20px 16px; }
+        #settings.open { grid-template-columns:minmax(0,1fr); gap:18px; }
+        .settings-nav { gap:4px; }
+        .settings-nav button { padding:9px; font-size:12px; }
+        .tab-home h1 { font-size:30px; }
+        #toolbar { gap:4px; padding:10px 6px; }
+        #engine { width:90px; padding:0 4px; }
+        .toolbar-btn { width:24px; }
+        #settings-toggle { width:28px; flex-shrink:0; }
+        .data-filter { flex-wrap:wrap; }
+      }
+      @media(prefers-reduced-motion:reduce) { * { transition:none!important; } }
+    </style>
+  </head>
+  <body>
+    <div id="browser">
+      <div id="tab-bar">
+        <button id="new-tab-btn" title="New tab" aria-label="New tab">+</button>
+      </div>
+
+      <div id="toolbar">
+        <button class="toolbar-btn" id="back" title="Back" aria-label="Back">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15 18-6-6 6-6"></path>
+          </svg>
+        </button>
+        <button class="toolbar-btn" id="forward" title="Forward" aria-label="Forward">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m9 18 6-6-6-6"></path>
+          </svg>
+        </button>
+        <button class="toolbar-btn" id="refresh" title="Refresh" aria-label="Refresh">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M3 21v-5h5"></path>
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M16 8h5V3"></path>
+          </svg>
+        </button>
+        <input id="search" autocomplete="off" spellcheck="false" placeholder="Search or enter URL" />
+        <select id="engine" title="Search engine" aria-label="Search engine">
+          <option value="duckduckgo">DuckDuckGo</option>
+          <option value="brave">Brave</option>
+          <option value="google">Google</option>
+        </select>
+        <select id="mode" title="Load mode" aria-label="Load mode">
+          <option value="rewrite">Rewrite</option>
+          <option value="frame">Direct frame</option>
+          <option value="reader">Reader</option>
+        </select>
+        <button id="settings-toggle" title="Backend settings" aria-label="Backend settings">⚙</button>
+      </div>
+
+      <div id="settings" role="region" aria-label="Browser settings">
+        <header class="settings-heading"><h2>Settings</h2><button class="tiny-btn" id="close-settings" aria-label="Close settings" title="Close settings">&#215;</button></header>
+        <nav class="settings-nav" aria-label="Settings categories">
+          <button type="button" data-panel="connection" aria-pressed="true">Connection</button>
+          <button type="button" data-panel="site-data" aria-pressed="false">Cookies and site data</button>
+          <button type="button" data-panel="advanced" aria-pressed="false">Advanced</button>
+          <button type="button" data-panel="diagnostics" aria-pressed="false">Request diagnostics</button>
+          <button type="button" data-panel="library" aria-pressed="false">History and bookmarks</button>
+          <button type="button" data-panel="permissions" aria-pressed="false">Site permissions</button>
+        </nav>
+        <section class="settings-card" data-settings-panel="connection">
+          <div class="settings-title">Server</div>
+          <label for="cookie-profile">Cookie profile</label>
+          <select id="cookie-profile"><option value="default">Default</option><option value="personal">Personal</option><option value="work">Work</option><option value="guest">Guest</option></select>
+          <textarea id="server-config" spellcheck="false" placeholder="proxy=https://sfools-stuff-342b8fbbb030.herokuapp.com/doom/raw?u={url}&#10;scramjet=https://site/?url={url}&wisp={wisp}&#10;wisp=wss://host/wisp/"></textarea>
+          <div class="settings-actions" style="margin-top:8px">
+            <button class="tiny-btn primary" id="save-settings">Save</button>
+            <button class="tiny-btn" id="clear-settings">Reset</button>
+          </div>
+        </section>
+        <section class="settings-card" data-settings-panel="diagnostics" hidden>
+          <div class="settings-title">Failed requests</div>
+          <div class="settings-actions"><button class="tiny-btn" id="refresh-diagnostics">Refresh</button><button class="tiny-btn" id="copy-diagnostics">Copy redacted report</button><button class="tiny-btn" id="clear-diagnostics">Clear</button></div>
+          <div id="diagnostic-list" class="browser-list" role="status"></div>
+          <textarea id="diagnostic-report" readonly aria-label="Redacted request report"></textarea>
+        </section>
+        <section class="settings-card" data-settings-panel="library" hidden>
+          <div class="settings-title">Library</div>
+          <div class="data-filter"><input type="search" id="library-search" placeholder="Search library" aria-label="Search library"><select id="library-kind"><option value="history">History</option><option value="bookmarks">Bookmarks</option><option value="downloads">Downloads</option></select></div>
+          <div class="settings-actions"><button class="tiny-btn" id="bookmark-page">Bookmark current page</button><button class="tiny-btn" id="restore-session">Restore last session</button><button class="tiny-btn" id="clear-history">Clear history</button></div>
+          <div id="library-list" class="browser-list"></div>
+        </section>
+        <section class="settings-card" data-settings-panel="permissions" hidden>
+          <div class="settings-title" id="permission-site">Current site</div>
+          <label class="permission-row">Camera <input type="checkbox" id="permission-camera"></label>
+          <label class="permission-row">Microphone <input type="checkbox" id="permission-microphone"></label>
+          <button class="tiny-btn" id="save-permissions">Save and reload site</button>
+        </section>
+        <section class="settings-card" data-settings-panel="advanced" hidden>
+          <div class="settings-title">Tools</div>
+          <div class="settings-actions">
+            <button class="tiny-btn" id="open-scramjet">Scramjet</button>
+            <button class="tiny-btn" id="open-eruda">Inspect</button>
+            <button class="tiny-btn" id="coi-toggle">COI off</button>
+            <button class="tiny-btn" id="cache-status">Status</button>
+          </div>
+        </section>
+        <section class="settings-card" data-settings-panel="site-data" hidden>
+          <div class="settings-title">Cookies and site data</div>
+          <p id="data-summary" role="status">Select Refresh to load stored sites.</p>
+          <div class="data-filter"><input id="site-filter" type="search" placeholder="Search stored sites" aria-label="Search stored sites"><button class="tiny-btn" id="refresh-site-data">Refresh</button></div>
+          <div id="site-data-list"></div>
+          <h3>Clear browsing data</h3>
+          <div class="settings-actions data-actions">
+            <button class="tiny-btn" id="clear-site-cache">Clear current site cache</button>
+            <button class="tiny-btn" id="clear-all-cache">Clear all cached files</button>
+            <button class="tiny-btn" id="clear-site-cookies">Clear current site cookies</button>
+            <button class="tiny-btn" id="clear-all-cookies">Clear all cookies</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="content-area"></div>
+      <div class="status" id="status"></div>
+    </div>
+
+    <template id="home-template">
+      <div class="tab-home">
+        <h1>buh <span>proxy</span></h1>
+        <input class="home-search" autocomplete="off" spellcheck="false" placeholder="Search or enter URL" />
+        <div class="home-shortcuts">
+          <button class="home-shortcut" data-url="https://slack.com" title="Open Slack"><span class="home-shortcut-icon"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span>slack</button>
+          <button class="home-shortcut" data-url="https://invidious.f5.si/" title="Open YouTube through Invidious"><span class="home-shortcut-icon video"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.296 3.464 3.02 3.956"/><path d="M20.2 6 3 11l-.9-2.4c-.3-1.1.3-2.2 1.3-2.5l13.5-4c1.1-.3 2.2.3 2.5 1.3z"/><path d="M3 11h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="m6.18 5.276 3.1 3.899"/></svg></span>YouTube</button>
+          <button class="home-shortcut" data-url="https://soundcloud.com/" title="Open SoundCloud"><span class="home-shortcut-icon audio"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10v3"/><path d="M6 6v11"/><path d="M10 3v18"/><path d="M14 8v7"/><path d="M18 5v13"/><path d="M22 10v3"/></svg></span>SoundCloud</button>
+        </div>
+      </div>
+    </template>
+
+    <script>
+      (() => {
+        "use strict";
+
+        const backendOrigin = "https://sfools-stuff-342b8fbbb030.herokuapp.com";
+
+        if (localStorage.getItem("buhBackendDefault") !== backendOrigin) {
+          localStorage.setItem("doomProxyBackend", defaultBackendTemplate());
+          localStorage.setItem("buhBackendDefault", backendOrigin);
+        }
+
+        const state = {
+          tabs: [],
+          activeId: null,
+          nextId: 1,
+          settingsOpen: false,
+          backendTemplate: cleanStoredBackend(localStorage.getItem("doomProxyBackend")),
+          scramjetTemplate: localStorage.getItem("doomProxyScramjet") || "",
+          wispUrl: localStorage.getItem("doomProxyWisp") || "",
+          coiEnabled: localStorage.getItem("doomProxyCOI") === "1" || new URLSearchParams(location.search).get("coi") === "1",
+          mode: localStorage.getItem("doomProxyMode") || "rewrite",
+          engine: localStorage.getItem("doomProxyEngine") || "duckduckgo",
+          profile: localStorage.getItem("doomCookieProfile") || "default",
+        };
+
+        const tabBar = document.getElementById("tab-bar");
+        let clientId = localStorage.getItem("buhClientId");
+        if (!/^[a-f0-9]{32}$/.test(clientId || "")) {
+          clientId = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, "0")).join("");
+          localStorage.setItem("buhClientId", clientId);
+        }
+        function wireProfile() { return clientId + "_" + state.profile; }
+        const newTabButton = document.getElementById("new-tab-btn");
+        const contentArea = document.getElementById("content-area");
+        const search = document.getElementById("search");
+        const back = document.getElementById("back");
+        const forward = document.getElementById("forward");
+        const refresh = document.getElementById("refresh");
+        const engine = document.getElementById("engine");
+        const mode = document.getElementById("mode");
+        const serverConfig = document.getElementById("server-config");
+        const settings = document.getElementById("settings");
+        const settingsToggle = document.getElementById("settings-toggle");
+        const saveSettings = document.getElementById("save-settings");
+        const clearSettings = document.getElementById("clear-settings");
+        const openScramjet = document.getElementById("open-scramjet");
+        const openEruda = document.getElementById("open-eruda");
+        const coiToggle = document.getElementById("coi-toggle");
+        const cacheStatus = document.getElementById("cache-status");
+        const clearSiteCache = document.getElementById("clear-site-cache");
+        const clearAllCache = document.getElementById("clear-all-cache");
+        const clearSiteCookies = document.getElementById("clear-site-cookies");
+        const clearAllCookies = document.getElementById("clear-all-cookies");
+        const status = document.getElementById("status");
+        const homeTemplate = document.getElementById("home-template");
+
+        serverConfig.value = formatServerConfig();
+        mode.value = state.mode;
+        if (!["duckduckgo", "brave", "google"].includes(state.engine)) state.engine = "duckduckgo";
+        engine.value = state.engine;
+
+        const searchEngines = {
+          duckduckgo: "https://duckduckgo.com/?q={query}",
+          brave: "https://search.brave.com/search?q={query}",
+          google: "https://www.google.com/search?igu=1&hl=en&q={query}",
+        };
+        const iframeAllow =
+          "autoplay; fullscreen; gamepad; picture-in-picture; encrypted-media; clipboard-read; clipboard-write; camera; microphone; display-capture; geolocation; accelerometer; gyroscope; magnetometer; xr-spatial-tracking";
+
+        function normalizeInput(value) {
+          const raw = value.trim();
+          if (!raw) return "";
+          if (/^wss?:\/\//i.test(raw)) {
+            state.wispUrl = raw;
+            serverConfig.value = formatServerConfig();
+            localStorage.setItem("doomProxyWisp", raw);
+            showStatus("Wisp endpoint saved. Add a Scramjet launch URL, then use Open in Scramjet.");
+            return "";
+          }
+          if (/^https?:\/\//i.test(raw)) return raw;
+          if (/^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(raw)) return "https://" + raw;
+          const template = searchEngines[state.engine] || searchEngines.duckduckgo;
+          return template.replace("{query}", encodeURIComponent(raw));
+        }
+
+        function activeTab() {
+          return state.tabs.find((tab) => tab.id === state.activeId);
+        }
+
+        function defaultBackendTemplate() {
+          return backendOrigin + "/doom/raw?u={url}";
+        }
+
+        function cleanStoredBackend(value) {
+          const raw = (value || "").trim();
+          if (/allorigins|codetabs|thingproxy/i.test(raw)) {
+            localStorage.removeItem("doomProxyBackend");
+            return defaultBackendTemplate();
+          }
+          return raw || defaultBackendTemplate();
+        }
+
+        function formatServerConfig() {
+          const lines = [state.backendTemplate || defaultBackendTemplate()];
+          if (state.scramjetTemplate) lines.push("scramjet=" + state.scramjetTemplate);
+          if (state.wispUrl) lines.push("wisp=" + state.wispUrl);
+          return lines.join("\n");
+        }
+
+        function parseServerConfig(value) {
+          const config = {
+            backendTemplate: "",
+            scramjetTemplate: "",
+            wispUrl: "",
+          };
+          for (const piece of String(value || "").split(/\n|,/)) {
+            const raw = piece.trim();
+            if (!raw) continue;
+            const eq = raw.indexOf("=");
+            const key = eq > 0 ? raw.slice(0, eq).trim().toLowerCase() : "";
+            const val = ["scramjet", "sj", "wisp", "proxy", "backend", "raw"].includes(key) ? raw.slice(eq + 1).trim() : raw;
+            if (key === "scramjet" || key === "sj") config.scramjetTemplate = val;
+            else if (key === "wisp" || /^wss?:\/\//i.test(val)) config.wispUrl = val;
+            else if (key === "proxy" || key === "backend" || key === "raw" || !config.backendTemplate) config.backendTemplate = val;
+          }
+          config.backendTemplate = cleanStoredBackend(config.backendTemplate);
+          return config;
+        }
+
+        function proxyUrl(targetUrl) {
+          const endpoint = new URL(buildProxyUrl(state.backendTemplate.trim() || defaultBackendTemplate(), targetUrl));
+          endpoint.searchParams.set("__doom_profile", wireProfile());
+          return endpoint.href;
+        }
+
+        function configuredBackendOrigin() {
+          try { return new URL(state.backendTemplate || defaultBackendTemplate()).origin; }
+          catch { return backendOrigin; }
+        }
+
+        function proxyPageUrl(targetUrl) {
+          try {
+            const target = new URL(targetUrl);
+            const token = btoa(target.origin)
+              .replaceAll("+", "-")
+              .replaceAll("/", "_")
+              .replace(/=+$/g, "");
+            return configuredBackendOrigin() + "/doom/page/" + wireProfile() + "~" + token + (target.pathname || "/") + target.search + target.hash;
+          } catch {
+            return buildProxyUrl(configuredBackendOrigin() + "/doom/page?u={url}", targetUrl);
+          }
+        }
+
+        function buildProxyUrl(template, targetUrl) {
+          if (template.includes("{rawUrl}")) return template.replaceAll("{rawUrl}", targetUrl);
+          if (template.includes("{url}")) return template.replaceAll("{url}", encodeURIComponent(targetUrl));
+          const separator = template.includes("?") ? "&" : "?";
+          return template + separator + "url=" + encodeURIComponent(targetUrl);
+        }
+
+        function buildScramjetUrl(targetUrl) {
+          const template = (state.scramjetTemplate || "").trim();
+          if (!template) return "";
+          let out = template
+            .replaceAll("{rawUrl}", targetUrl)
+            .replaceAll("{url}", encodeURIComponent(targetUrl))
+            .replaceAll("{rawWisp}", state.wispUrl)
+            .replaceAll("{wisp}", encodeURIComponent(state.wispUrl));
+          if (out === template) {
+            const separator = out.includes("?") ? "&" : "?";
+            out += separator + "url=" + encodeURIComponent(targetUrl);
+            if (state.wispUrl) out += "&wisp=" + encodeURIComponent(state.wispUrl);
+          }
+          return out;
+        }
+
+        function openActiveInScramjet() {
+          const tab = activeTab();
+          if (!tab?.url) {
+            showStatus("Open a site first, then hand it to Scramjet.");
+            return;
+          }
+          const url = buildScramjetUrl(tab.url);
+          if (!url) {
+            showStatus("Add a Scramjet/static launch URL template first.");
+            return;
+          }
+          navigate(url);
+        }
+
+        function openShellInspector() {
+          if (window.eruda) {
+            window.eruda.init();
+            window.eruda.show();
+            showStatus("Inspector opened for the Buh shell. Use the in-page Inspect button for proxied sites.");
+            return;
+          }
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/eruda/eruda.min.js";
+          script.onload = () => {
+            window.eruda?.init();
+            window.eruda?.show();
+            showStatus("Inspector opened for the Buh shell. Use the in-page Inspect button for proxied sites.");
+          };
+          script.onerror = () => showStatus("Could not load Eruda from CDN.");
+          document.head.appendChild(script);
+        }
+
+        function showStatus(message, ms = 4200) {
+          status.textContent = String(message).toLowerCase();
+          status.classList.add("show");
+          clearTimeout(showStatus.timer);
+          showStatus.timer = setTimeout(() => status.classList.remove("show"), ms);
+        }
+
+        function canUseServiceWorker() {
+          return "serviceWorker" in navigator && isSecureContext && /^https?:$/i.test(location.protocol);
+        }
+
+        function updateCoiButton() {
+          const isolated = Boolean(window.crossOriginIsolated);
+          coiToggle.textContent = state.coiEnabled ? (isolated ? "COI on" : "COI pending") : "COI off";
+          coiToggle.title = state.coiEnabled
+            ? "Disable cross-origin isolation service worker"
+            : "Enable cross-origin isolation for SharedArrayBuffer/WebAssembly sites";
+        }
+
+        function coiPageUrl() {
+          const url = new URL(location.href);
+          url.pathname = "/doom-proxy.html";
+          url.searchParams.set("coi", "1");
+          return url.href;
+        }
+
+        async function registerCoiServiceWorker() {
+          if (!canUseServiceWorker()) {
+            showStatus("COI needs the proxy opened from localhost or HTTPS, not file://.");
+            return false;
+          }
+          const registration = await navigator.serviceWorker.register("/doom/coi-sw.js", { scope: "/" });
+          await navigator.serviceWorker.ready;
+          if (registration.active) registration.active.postMessage("claim");
+          return true;
+        }
+
+        async function enableCoiMode() {
+          state.coiEnabled = true;
+          localStorage.setItem("doomProxyCOI", "1");
+          updateCoiButton();
+          try {
+            const ok = await registerCoiServiceWorker();
+            if (!ok) return;
+            const params = new URLSearchParams(location.search);
+            if (params.get("coi") !== "1" || !navigator.serviceWorker.controller) {
+              location.href = coiPageUrl();
+              return;
+            }
+            if (!window.crossOriginIsolated) {
+              showStatus("COI is installed, but this browser context is not isolated yet. Open the proxy as a top-level localhost/HTTPS page.", 7000);
+              return;
+            }
+            showStatus("Cross-origin isolation is enabled.");
+            updateCoiButton();
+          } catch (error) {
+            state.coiEnabled = false;
+            localStorage.removeItem("doomProxyCOI");
+            updateCoiButton();
+            showStatus("COI setup failed: " + error.message, 7000);
+          }
+        }
+
+        async function disableCoiMode() {
+          state.coiEnabled = false;
+          localStorage.removeItem("doomProxyCOI");
+          updateCoiButton();
+          try {
+            if ("serviceWorker" in navigator) {
+              const registrations = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(registrations
+                .filter((registration) => registration.active?.scriptURL.includes("/doom/coi-sw.js"))
+                .map((registration) => registration.unregister()));
+            }
+          } finally {
+            location.href = "/doom-proxy.html";
+          }
+        }
+
+        async function cleanupStaleCoiMode() {
+          if (!("serviceWorker" in navigator)) return;
+          const controlledByCoi = navigator.serviceWorker.controller?.scriptURL.includes("/doom/coi-sw.js");
+          if (!controlledByCoi) return;
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(registrations
+            .filter((registration) => registration.active?.scriptURL.includes("/doom/coi-sw.js"))
+            .map((registration) => registration.unregister()));
+          location.reload();
+        }
+
+        function initCoiMode() {
+          updateCoiButton();
+          if (location.protocol === "file:") {
+            if (state.coiEnabled) {
+              state.coiEnabled = false;
+              localStorage.removeItem("doomProxyCOI");
+              updateCoiButton();
+            }
+            return;
+          }
+          if (!state.coiEnabled) {
+            cleanupStaleCoiMode();
+            return;
+          }
+          enableCoiMode();
+        }
+
+        function activeHost() {
+          const tab = activeTab();
+          if (!tab?.url) return "";
+          try {
+            return new URL(tab.url).hostname;
+          } catch {
+            return "";
+          }
+        }
+
+        async function doomApi(path, options = {}) {
+          const endpoint = new URL(path, configuredBackendOrigin());
+          endpoint.searchParams.set("__doom_profile", wireProfile());
+          const response = await fetch(endpoint, { cache: "no-store", ...options });
+          if (!response.ok) throw new Error("Buh API returned HTTP " + response.status);
+          return await response.json();
+        }
+
+        async function runMaintenance(label, path) {
+          try {
+            const data = await doomApi(path);
+            if (path.startsWith("/doom/cookies/clear")) {
+              const host = new URL(path, configuredBackendOrigin()).searchParams.get("host") || "";
+              for (const tab of state.tabs) tab.iframe?.contentWindow.postMessage({ type:"clearProxyCookies", host }, configuredBackendOrigin());
+            }
+            showStatus(label + (Number.isFinite(data.cleared) ? ". Removed " + data.cleared + " entries." : "."));
+            await refreshSiteData();
+          } catch (error) {
+            showStatus(error.message, 6500);
+          }
+        }
+
+        function readSaved(key, fallback = []) {
+          try { return JSON.parse(localStorage.getItem("doom:" + state.profile + ":" + key)) || fallback; }
+          catch { return fallback; }
+        }
+        function writeSaved(key, value) {
+          try { localStorage.setItem("doom:" + state.profile + ":" + key, JSON.stringify(value)); }
+          catch { showStatus("Browser storage is full or unavailable."); }
+        }
+        let previousSession = readSaved("session");
+        function persistSession() {
+          const tabs = state.tabs.filter(tab => /^https?:/.test(tab.url)).map(tab => ({ url: tab.url, title: tab.title }));
+          if (tabs.length) writeSaved("session", tabs);
+        }
+        function renderLibrary() {
+          const kind = document.getElementById("library-kind").value;
+          const query = document.getElementById("library-search").value.toLowerCase();
+          const list = document.getElementById("library-list"); list.replaceChildren();
+          const entries = readSaved(kind).filter(item => (item.title + " " + item.url).toLowerCase().includes(query));
+          for (const item of entries.slice(0, 150)) {
+            const row = document.createElement("div"); row.className = "browser-row";
+            const title = document.createElement("div"); title.className = "row-main"; title.textContent = item.title || item.url;
+            const url = document.createElement("small"); url.textContent = item.url; title.appendChild(url);
+            const open = document.createElement("button"); open.className = "tiny-btn"; open.textContent = "Open";
+            open.textContent = kind === "downloads" ? "Download again" : "Open";
+            open.onclick = () => { if (kind === "downloads") startDownload(item.url); else { closeSettings(); createTab(item.url); } };
+            const remove = document.createElement("button"); remove.className = "tiny-btn"; remove.textContent = "\u00d7";
+            remove.title = "Remove entry"; remove.setAttribute("aria-label", "Remove entry");
+            remove.onclick = () => { writeSaved(kind, readSaved(kind).filter(entry => entry.url !== item.url)); renderLibrary(); };
+            row.append(title, open, remove); list.appendChild(row);
+          }
+          if (!entries.length) list.textContent = "No entries.";
+        }
+        async function refreshDiagnostics() {
+          const list = document.getElementById("diagnostic-list");
+          try {
+            const data = await doomApi("/doom/diagnostics");
+            document.getElementById("diagnostic-report").value = JSON.stringify(data, null, 2);
+            list.replaceChildren();
+            for (const item of data.failures.slice().reverse().slice(0, 60)) {
+              const row = document.createElement("div"); row.className = "browser-row";
+              row.textContent = (item.status + " | " + item.source + " | " + item.method + " " + item.origin +
+                (item.retryAfter ? " | retry in " + item.retryAfter + "s" : "")).toLowerCase(); list.appendChild(row);
+            }
+            if (!data.failures.length) list.textContent = "no recorded failures.";
+          } catch (error) { list.textContent = String(error.message).toLowerCase(); }
+        }
+        function startDownload(url) {
+          if (!/^https?:\/\//i.test(url)) return;
+          const endpoint = new URL("/doom/download", configuredBackendOrigin());
+          endpoint.searchParams.set("u", url); endpoint.searchParams.set("__doom_profile", wireProfile());
+          const link = document.createElement("a"); link.href = endpoint.href; link.download = "";
+          link.target = "_blank"; link.rel = "noopener";
+          document.body.appendChild(link); link.click(); link.remove();
+          const downloads = readSaved("downloads");
+          downloads.unshift({ url, title: "Requested: " + (new URL(url).pathname.split("/").pop() || "download"), time: Date.now() });
+          writeSaved("downloads", downloads.slice(0, 100));
+          showStatus("Download requested. Your browser handles progress and saving.");
+        }
+        function renderPermissions() {
+          const site = activeTab()?.url ? new URL(activeTab().url).origin : "";
+          document.getElementById("permission-site").textContent = site || "No site open";
+          const saved = readSaved("permissions", {})[site] || {};
+          for (const name of ["camera", "microphone"]) document.getElementById("permission-" + name).checked = !!saved[name];
+        }
+        document.getElementById("cookie-profile").value = state.profile;
+        document.getElementById("cookie-profile").onchange = event => {
+          persistSession();
+          for (const tab of state.tabs) tab.content.remove();
+          state.tabs = []; state.activeId = null;
+          state.profile = event.target.value;
+          localStorage.setItem("doomCookieProfile", state.profile);
+          previousSession = readSaved("session");
+          createTab(); showStatus("Cookie profile changed. Cookies remain in memory until the backend stops.");
+        };
+        document.getElementById("library-search").oninput = renderLibrary;
+        document.getElementById("library-kind").onchange = renderLibrary;
+        document.getElementById("bookmark-page").onclick = () => {
+          const tab = activeTab(); if (!tab?.url) return;
+          const saved = readSaved("bookmarks").filter(item => item.url !== tab.url);
+          saved.unshift({ url: tab.url, title: tab.title }); writeSaved("bookmarks", saved); renderLibrary();
+        };
+        document.getElementById("restore-session").onclick = () => {
+          const restore = previousSession; previousSession = [];
+          for (const tab of restore) if (/^https?:\/\//.test(tab.url)) createTab(tab.url);
+          if (restore.length) closeSettings(); else showStatus("No previous session to restore.");
+        };
+        document.getElementById("clear-history").onclick = () => { writeSaved("history", []); renderLibrary(); };
+        document.getElementById("refresh-diagnostics").onclick = refreshDiagnostics;
+        document.getElementById("clear-diagnostics").onclick = async () => {
+          try { await doomApi("/doom/diagnostics", { method: "DELETE" }); await refreshDiagnostics(); }
+          catch (error) { showStatus(error.message); }
+        };
+        document.getElementById("copy-diagnostics").onclick = async () => {
+          const report = document.getElementById("diagnostic-report");
+          try { await navigator.clipboard.writeText(report.value); showStatus("Redacted report copied."); }
+          catch { report.focus(); report.select(); showStatus(document.execCommand("copy") ? "Redacted report copied." : "Report selected. Use your browser's Copy command."); }
+        };
+        document.getElementById("save-permissions").onclick = () => {
+          const tab = activeTab(); if (!tab?.url) return;
+          const saved = readSaved("permissions", {});
+          saved[new URL(tab.url).origin] = Object.fromEntries(["camera", "microphone"].map(name => [name, document.getElementById("permission-" + name).checked]));
+          writeSaved("permissions", saved); closeSettings(); loadCurrentTab();
+        };
+
+        function createTab(startUrl = "") {
+          const id = state.nextId++;
+          const tab = {
+            id,
+            title: "New tab",
+            url: "",
+            history: [],
+            index: -1,
+            mode: state.mode,
+            content: document.createElement("section"),
+          };
+
+          tab.content.className = "tab-content";
+          tab.content.dataset.tabId = id;
+          contentArea.appendChild(tab.content);
+          state.tabs.push(tab);
+          setActiveTab(id);
+          renderHome(tab);
+          if (startUrl) navigate(startUrl);
+          renderTabs();
+          return tab;
+        }
+
+        function closeTab(id) {
+          const index = state.tabs.findIndex((tab) => tab.id === id);
+          if (index === -1) return;
+          const [tab] = state.tabs.splice(index, 1);
+          tab.content.remove();
+          if (state.activeId === id) {
+            const next = state.tabs[index] || state.tabs[index - 1];
+            if (next) setActiveTab(next.id);
+            else createTab();
+          }
+          renderTabs();
+        }
+
+        function setActiveTab(id) {
+          state.activeId = id;
+          for (const tab of state.tabs) {
+            tab.content.classList.toggle("active", tab.id === id);
+          }
+          const tab = activeTab();
+          search.value = tab?.url || "";
+          updateNavButtons();
+          renderTabs();
+        }
+
+        function renderTabs() {
+          persistSession();
+          for (const node of [...tabBar.querySelectorAll(".tab")]) node.remove();
+          for (const tab of state.tabs) {
+            const el = document.createElement("div");
+            el.className = "tab" + (tab.id === state.activeId ? " active" : "");
+            el.title = tab.url || tab.title;
+            el.dataset.id = tab.id;
+            el.innerHTML = '<span class="tab-title"></span><span class="tab-close" title="Close tab">×</span>';
+            el.querySelector(".tab-title").textContent = tab.title;
+            el.addEventListener("click", () => setActiveTab(tab.id));
+            el.querySelector(".tab-close").addEventListener("click", (event) => {
+              event.stopPropagation();
+              closeTab(tab.id);
+            });
+            tabBar.insertBefore(el, newTabButton);
+          }
+        }
+
+        function updateNavButtons() {
+          const tab = activeTab();
+          back.disabled = !tab || tab.index <= 0;
+          forward.disabled = !tab || tab.index >= tab.history.length - 1;
+          refresh.disabled = !tab || !tab.url;
+        }
+
+        function renderHome(tab) {
+          tab.url = "";
+          tab.title = "buh proxy";
+          tab.content.replaceChildren(homeTemplate.content.cloneNode(true));
+          const homeInput = tab.content.querySelector(".home-search");
+          homeInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") navigate(homeInput.value);
+          });
+          for (const shortcut of tab.content.querySelectorAll(".home-shortcut")) {
+            shortcut.addEventListener("click", () => navigate(shortcut.dataset.url));
+          }
+          renderTabs();
+          updateNavButtons();
+        }
+
+        function pushHistory(tab, url) {
+          if (tab.history[tab.index] === url) return;
+          tab.history = tab.history.slice(0, tab.index + 1);
+          tab.history.push(url);
+          tab.index = tab.history.length - 1;
+          const entries = readSaved("history");
+          entries.unshift({ url, title: tab.title || new URL(url).hostname, time: Date.now() });
+          writeSaved("history", entries.slice(0, 500));
+        }
+
+        async function navigate(value, options = {}) {
+          const tab = activeTab();
+          if (!tab) return;
+          if (!options.automatic) tab.documentLoads = [];
+          const url = normalizeInput(value);
+          if (!url) return;
+          if (!options.skipHistory) pushHistory(tab, url);
+          tab.url = url;
+          tab.mode = state.mode;
+          tab.title = new URL(url).hostname.replace(/^www\./, "") || "Loading";
+          search.value = url;
+          updateNavButtons();
+          renderTabs();
+          await loadCurrentTab();
+        }
+
+        async function loadCurrentTab() {
+          const tab = activeTab();
+          if (!tab || !tab.url) return;
+          if (tab.mode === "frame") {
+            renderFrame(tab, tab.url);
+            return;
+          }
+          if (tab.mode === "reader") {
+            await renderReader(tab);
+            return;
+          }
+          await renderRewrite(tab);
+        }
+
+        function renderLoading(tab, label) {
+          tab.content.replaceChildren();
+          const shell = document.createElement("div");
+          shell.className = "loading";
+          shell.innerHTML =
+            '<div class="loading-card"><h2></h2><p></p></div>';
+          shell.querySelector("h2").textContent = label;
+          shell.querySelector("p").textContent = tab.url;
+          tab.content.appendChild(shell);
+        }
+
+        function renderFrame(tab, url) {
+          tab.content.replaceChildren();
+          const frame = document.createElement("iframe");
+          frame.className = "proxy-iframe";
+          frame.referrerPolicy = "origin-when-cross-origin";
+          const permissions = readSaved("permissions", {})[new URL(tab.url).origin] || {};
+          frame.allow = iframeAllow.split(";").filter(value => !["camera", "microphone"].includes(value.trim())).join(";") +
+            "; camera " + (permissions.camera ? "*" : "'none'") + "; microphone " + (permissions.microphone ? "*" : "'none'");
+          frame.src = url;
+          tab.content.appendChild(frame);
+          tab.iframe = frame;
+          if (tab.mode === "frame") showStatus("Direct frame mode: sites with frame blocking headers may refuse to load.");
+        }
+
+        async function fetchViaBackend(tab) {
+          const endpoint = proxyUrl(tab.url);
+          const response = await fetch(endpoint, { credentials: "omit" });
+          if (!response.ok) throw new Error("Backend returned HTTP " + response.status);
+          const text = await response.text();
+          if (!text.trim()) throw new Error("Backend returned an empty response.");
+          return text;
+        }
+
+        async function renderReader(tab) {
+          renderLoading(tab, "Fetching reader view");
+          try {
+            const html = await fetchViaBackend(tab);
+            const doc = new DOMParser().parseFromString(html, "text/html");
+            const title = doc.querySelector("title")?.textContent?.trim();
+            if (title) {
+              tab.title = title.slice(0, 60);
+              renderTabs();
+            }
+            const article =
+              doc.querySelector("article") ||
+              doc.querySelector("main") ||
+              doc.body;
+            const clean = document.implementation.createHTMLDocument(title || tab.url);
+            const style = clean.createElement("style");
+            style.textContent =
+              "body{margin:0;background:#fff;color:#151515;font:16px/1.6 system-ui,sans-serif}main{max-width:780px;margin:auto;padding:34px 22px}img,video{max-width:100%;height:auto}a{color:#b21b1b}";
+            clean.head.appendChild(style);
+            const main = clean.createElement("main");
+            main.innerHTML = article ? article.innerHTML : "";
+            rewriteDocumentUrls(main, tab.url);
+            for (const node of main.querySelectorAll("script,iframe,object,embed")) node.remove();
+            clean.body.appendChild(main);
+            renderSrcDoc(tab, "<!doctype html>" + clean.documentElement.outerHTML);
+          } catch (error) {
+            renderError(tab, error.message);
+          }
+        }
+
+        async function renderRewrite(tab) {
+          renderFrame(tab, proxyPageUrl(tab.url));
+        }
+
+        function renderSrcDoc(tab, html) {
+          tab.content.replaceChildren();
+          const frame = document.createElement("iframe");
+          frame.className = "proxy-iframe";
+          frame.referrerPolicy = "origin-when-cross-origin";
+          frame.allow = iframeAllow;
+          frame.srcdoc = html;
+          tab.content.appendChild(frame);
+        }
+
+        function renderError(tab, message) {
+          tab.iframe = null;
+          tab.content.replaceChildren();
+          const shell = document.createElement("div");
+          shell.className = "loading";
+          shell.innerHTML =
+            '<div class="loading-card"><h2>Could not load page</h2><p></p></div>';
+          shell.querySelector("p").textContent = message;
+          tab.content.appendChild(shell);
+          showStatus(message, 6500);
+        }
+
+        function rewriteHtml(html, baseUrl) {
+          const doc = new DOMParser().parseFromString(html, "text/html");
+          const title = doc.querySelector("title")?.textContent?.trim();
+          const tab = activeTab();
+          if (title && tab) {
+            tab.title = title.slice(0, 60);
+            renderTabs();
+          }
+
+          const base = doc.createElement("base");
+          base.href = baseUrl;
+          doc.head.prepend(base);
+
+          rewriteDocumentUrls(doc, baseUrl);
+          injectNavigationTrap(doc, baseUrl);
+          return "<!doctype html>" + doc.documentElement.outerHTML;
+        }
+
+        function rewriteDocumentUrls(root, baseUrl) {
+          const navigationalAttrs = ["href", "action"];
+          const assetAttrs = ["src", "poster"];
+          for (const el of root.querySelectorAll("*")) {
+            for (const attr of navigationalAttrs) {
+              const value = el.getAttribute(attr);
+              if (!value || shouldSkipUrl(value)) continue;
+              try {
+                el.setAttribute(attr, shellNavigationUrl(new URL(value, baseUrl).href));
+              } catch {}
+            }
+
+            for (const attr of assetAttrs) {
+              const value = el.getAttribute(attr);
+              if (!value || shouldSkipUrl(value)) continue;
+              try {
+                el.setAttribute(attr, proxiedAssetUrl(new URL(value, baseUrl).href));
+              } catch {}
+            }
+
+            const srcset = el.getAttribute("srcset");
+            if (srcset) el.setAttribute("srcset", rewriteSrcset(srcset, baseUrl));
+
+            const style = el.getAttribute("style");
+            if (style) el.setAttribute("style", rewriteCssUrls(style, baseUrl));
+          }
+
+          for (const style of root.querySelectorAll("style")) {
+            style.textContent = rewriteCssUrls(style.textContent || "", baseUrl);
+          }
+        }
+
+        function shouldSkipUrl(value) {
+          return /^(#|data:|blob:|mailto:|tel:|javascript:)/i.test(value.trim());
+        }
+
+        function shellNavigationUrl(url) {
+          const encoded = encodeURIComponent(url);
+          return "javascript:parent.postMessage({doomProxyNavigate:'" + encoded + "'}, '*')";
+        }
+
+        function proxiedAssetUrl(url) {
+          return proxyUrl(url) || url;
+        }
+
+        function rewriteSrcset(srcset, baseUrl) {
+          return srcset
+            .split(",")
+            .map((part) => {
+              const bits = part.trim().split(/\s+/);
+              if (!bits[0] || shouldSkipUrl(bits[0])) return part.trim();
+              try {
+                bits[0] = proxiedAssetUrl(new URL(bits[0], baseUrl).href);
+              } catch {
+                return part.trim();
+              }
+              return bits.join(" ");
+            })
+            .join(", ");
+        }
+
+        function rewriteCssUrls(css, baseUrl) {
+          return css.replace(/url\((['"]?)(.*?)\1\)/gi, (_match, quote, raw) => {
+            const url = raw.trim();
+            if (!url || shouldSkipUrl(url)) return "url(" + quote + raw + quote + ")";
+            try {
+              return "url(" + quote + proxiedAssetUrl(new URL(url, baseUrl).href) + quote + ")";
+            } catch {
+              return "url(" + quote + raw + quote + ")";
+            }
+          });
+        }
+
+        function injectNavigationTrap(doc, baseUrl) {
+          const script = doc.createElement("script");
+          script.textContent = `
+            (() => {
+              const base = ${JSON.stringify(baseUrl)};
+              const send = (url) => parent.postMessage({ doomProxyNavigate: encodeURIComponent(new URL(url, base).href) }, "*");
+              addEventListener("click", (event) => {
+                const a = event.target && event.target.closest && event.target.closest("a[href]");
+                if (!a) return;
+                const href = a.getAttribute("href");
+                if (!href || /^(#|data:|blob:|mailto:|tel:|javascript:)/i.test(href)) return;
+                event.preventDefault();
+                send(href);
+              }, true);
+              addEventListener("submit", (event) => {
+                const form = event.target;
+                if (!form || !form.action) return;
+                event.preventDefault();
+                const data = new FormData(form);
+                const url = new URL(form.getAttribute("action") || location.href, base);
+                if ((form.method || "get").toLowerCase() === "get") {
+                  for (const [key, value] of data) url.searchParams.set(key, value);
+                  send(url.href);
+                }
+              }, true);
+            })();
+          `;
+          doc.head.appendChild(script);
+        }
+
+        function tabForSource(source) {
+          return state.tabs.find((tab) => tab.iframe && tab.iframe.contentWindow === source);
+        }
+
+        function recordDocumentLoad(tab, now = Date.now()) {
+          tab.documentLoads = (tab.documentLoads || []).filter(time => now - time < 15000);
+          tab.documentLoads.push(now);
+          return tab.documentLoads.length >= 8;
+        }
+
+        window.addEventListener("message", (event) => {
+          const encoded = event.data && event.data.doomProxyNavigate;
+          if (encoded && tabForSource(event.source)) {
+            navigate(decodeURIComponent(encoded), { automatic: true });
+            return;
+          }
+
+          const message = event.data;
+          if (!message || typeof message !== "object") return;
+          const tab = tabForSource(event.source);
+          if (!tab) return;
+          if (message.type === "proxyDocument") {
+            if (recordDocumentLoad(tab)) {
+              renderError(tab, "Buh paused this page after repeated reloads. Verification is not completing. Use Refresh to try again when ready.");
+            }
+            return;
+          }
+          if (message.type === "verificationPaused") {
+            renderError(tab, "verification loop paused. the website keeps requesting verification. wait " +
+              Math.max(1, Math.min(300, Number(message.retryAfter) || 60)) + " seconds, then use refresh to retry.");
+            return;
+          }
+          if (message.type === "download") { startDownload(String(message.url || "")); return; }
+          if (message.type === "requestFailure") {
+            if (message.source === "doom-verification-loop") {
+              renderError(tab, "verification loop paused. wait 60 seconds before refreshing.");
+              return;
+            }
+            showStatus((message.source === "website" ? "Website" : "Buh") + " returned HTTP " + Number(message.status) +
+              (message.retryAfter ? ". Retry after " + String(message.retryAfter).slice(0, 40) : "") + ". Details in Request diagnostics.", 8000);
+            return;
+          }
+          if (message.type === "mediaFailure") {
+            showStatus("Playback failed (media code " + Number(message.code) + "). Check Request diagnostics for upstream failures.", 8000);
+            return;
+          }
+
+          if (message.type === "loadUrl" && message.url) {
+            setActiveTab(tab.id);
+            navigate(message.url, { automatic: true });
+            return;
+          }
+
+          if (message.type === "openTab" && /^https?:\/\//i.test(message.url || "")) {
+            createTab(message.url);
+            return;
+          }
+
+          if (message.type === "proxyState") {
+            if (message.url) {
+              if (tab.url !== message.url) pushHistory(tab, message.url);
+              tab.url = message.url;
+              if (tab.id === state.activeId) search.value = message.url;
+            }
+            if (message.title) tab.title = String(message.title).slice(0, 60);
+            renderTabs();
+            updateNavButtons();
+          }
+        });
+
+        search.addEventListener("keydown", (event) => {
+          if (event.key === "Enter") navigate(search.value);
+        });
+
+        newTabButton.addEventListener("click", () => createTab());
+        back.addEventListener("click", () => {
+          const tab = activeTab();
+          if (!tab || tab.index <= 0) return;
+          tab.index--;
+          navigate(tab.history[tab.index], { skipHistory: true });
+        });
+        forward.addEventListener("click", () => {
+          const tab = activeTab();
+          if (!tab || tab.index >= tab.history.length - 1) return;
+          tab.index++;
+          navigate(tab.history[tab.index], { skipHistory: true });
+        });
+        refresh.addEventListener("click", () => {
+          const tab = activeTab();
+          if (tab) tab.documentLoads = [];
+          loadCurrentTab();
+        });
+        mode.addEventListener("change", () => {
+          state.mode = mode.value;
+          localStorage.setItem("doomProxyMode", state.mode);
+          const tab = activeTab();
+          if (tab?.url) {
+            tab.mode = state.mode;
+            loadCurrentTab();
+          }
+        });
+        engine.addEventListener("change", () => {
+          state.engine = engine.value;
+          localStorage.setItem("doomProxyEngine", state.engine);
+          showStatus("Search engine set to " + engine.options[engine.selectedIndex].text + ".");
+        });
+        settingsToggle.addEventListener("click", () => {
+          state.settingsOpen = !state.settingsOpen;
+          settings.classList.toggle("open", state.settingsOpen);
+          settingsToggle.setAttribute("aria-expanded", String(state.settingsOpen));
+        });
+        const closeSettings = () => {
+          state.settingsOpen = false;
+          settings.classList.remove("open");
+          settingsToggle.setAttribute("aria-expanded", "false");
+          settingsToggle.focus();
+        };
+        document.getElementById("close-settings").addEventListener("click", closeSettings);
+        document.addEventListener("keydown", event => { if (event.key === "Escape" && state.settingsOpen) closeSettings(); });
+        for (const button of document.querySelectorAll("[data-panel]")) button.addEventListener("click", () => {
+          for (const item of document.querySelectorAll("[data-panel]")) item.setAttribute("aria-pressed", String(item === button));
+          for (const panel of document.querySelectorAll("[data-settings-panel]")) panel.hidden = panel.dataset.settingsPanel !== button.dataset.panel;
+          if (button.dataset.panel === "site-data") refreshSiteData();
+          if (button.dataset.panel === "diagnostics") refreshDiagnostics();
+          if (button.dataset.panel === "library") renderLibrary();
+          if (button.dataset.panel === "permissions") renderPermissions();
+        });
+        let siteData = { hosts: {}, cookies: {} };
+        function renderSiteData() {
+          const list = document.getElementById("site-data-list");
+          list.replaceChildren();
+          const filter = document.getElementById("site-filter").value.toLowerCase();
+          const hosts = [...new Set([...Object.keys(siteData.hosts), ...Object.keys(siteData.cookies)])].sort().filter(host => host.includes(filter));
+          for (const host of hosts) {
+            const row = document.createElement("div"); row.className = "site-data-row";
+            const details = document.createElement("div"); details.className = "site-details";
+            const title = document.createElement("strong"); title.textContent = host;
+            const count = document.createElement("small"); count.textContent = (siteData.cookies[host] || 0) + " cookies / " + (siteData.hosts[host] || 0) + " cached files";
+            details.append(title, count); row.append(details);
+            for (const type of ["cookies", "cache"]) {
+              const clear = document.createElement("button"); clear.className = "tiny-btn"; clear.textContent = "Clear " + type;
+              clear.disabled = !(type === "cookies" ? siteData.cookies[host] : siteData.hosts[host]);
+              clear.addEventListener("click", () => runMaintenance("Cleared " + host + " " + type, "/doom/" + type + "/clear?host=" + encodeURIComponent(host)));
+              row.append(clear);
+            }
+            list.append(row);
+          }
+          if (!hosts.length) list.textContent = "No stored sites found.";
+        }
+        async function refreshSiteData() {
+          const summary = document.getElementById("data-summary");
+          try {
+            const data = await doomApi("/doom/cache/status");
+            siteData = { hosts: data.hosts || {}, cookies: data.cookies || {} };
+            summary.textContent = data.cookieHosts + " cookie domains / " + data.cacheItems + " cached files";
+            renderSiteData();
+          } catch { summary.textContent = "Site data unavailable. Check the server connection."; }
+        }
+        document.getElementById("site-filter").addEventListener("input", renderSiteData);
+        document.getElementById("refresh-site-data").addEventListener("click", refreshSiteData);
+        saveSettings.addEventListener("click", () => {
+          const config = parseServerConfig(serverConfig.value);
+          state.backendTemplate = config.backendTemplate;
+          state.scramjetTemplate = config.scramjetTemplate;
+          state.wispUrl = config.wispUrl;
+          serverConfig.value = formatServerConfig();
+          localStorage.setItem("doomProxyBackend", state.backendTemplate);
+          localStorage.setItem("doomProxyScramjet", state.scramjetTemplate);
+          localStorage.setItem("doomProxyWisp", state.wispUrl);
+          showStatus("Proxy settings saved.");
+        });
+        clearSettings.addEventListener("click", () => {
+          state.backendTemplate = defaultBackendTemplate();
+          state.scramjetTemplate = "";
+          state.wispUrl = "";
+          serverConfig.value = formatServerConfig();
+          localStorage.removeItem("doomProxyBackend");
+          localStorage.removeItem("doomProxyScramjet");
+          localStorage.removeItem("doomProxyWisp");
+          showStatus("Proxy settings reset.");
+        });
+        openScramjet.addEventListener("click", openActiveInScramjet);
+        openEruda.addEventListener("click", openShellInspector);
+        coiToggle.addEventListener("click", () => {
+          if (state.coiEnabled) disableCoiMode();
+          else enableCoiMode();
+        });
+        cacheStatus.addEventListener("click", () => {
+          runMaintenance("Cache status", "/doom/cache/status");
+        });
+        clearSiteCache.addEventListener("click", () => {
+          const host = activeHost();
+          if (!host) {
+            showStatus("Open a site first, then clear its cache.");
+            return;
+          }
+          runMaintenance("Cleared site cache", "/doom/cache/clear?host=" + encodeURIComponent(host));
+        });
+        clearAllCache.addEventListener("click", () => {
+          runMaintenance("Cleared all cache", "/doom/cache/clear");
+        });
+        clearSiteCookies.addEventListener("click", () => {
+          const host = activeHost();
+          if (!host) {
+            showStatus("Open a site first, then clear its cookies.");
+            return;
+          }
+          localStorage.removeItem("__doom_cookie__:" + host);
+          runMaintenance("Cleared site cookies", "/doom/cookies/clear?host=" + encodeURIComponent(host));
+        });
+        clearAllCookies.addEventListener("click", () => {
+          for (const key of Object.keys(localStorage)) {
+            if (key.startsWith("__doom_cookie__:")) localStorage.removeItem(key);
+          }
+          runMaintenance("Cleared all cookies", "/doom/cookies/clear");
+        });
+
+        initCoiMode();
+        createTab();
+      })();
+    </script>
+  </body>
+</html>
